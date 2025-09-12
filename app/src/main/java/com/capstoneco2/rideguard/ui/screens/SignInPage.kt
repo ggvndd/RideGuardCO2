@@ -1,6 +1,9 @@
 package com.capstoneco2.rideguard.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
@@ -31,12 +35,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.ui.components.BodyText
 import com.capstoneco2.rideguard.ui.components.ErrorText
 import com.capstoneco2.rideguard.ui.components.MainHeader
@@ -66,91 +74,81 @@ fun SignInPage(
     ) {
         Spacer(modifier = Modifier.height(60.dp))
         
-        // Header
+        Image(
+            painter = painterResource(id = R.drawable.helmet_logo),
+            contentDescription = "RideGuard Helmet Logo",
+            modifier = Modifier.size(80.dp),
+            contentScale = ContentScale.Fit
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Header - Larger and more prominent like in mockup
         MainHeader(
-            text = "Welcome Back",
-            textAlign = TextAlign.Center
+            text = "Sign In",
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.primary
         )
         
         Spacer(modifier = Modifier.height(8.dp))
         
         BodyText(
-            text = "Sign in to continue your sustainable journey",
+            text = "Welcome! Sign in now to use Rideguard!",
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )
         
         Spacer(modifier = Modifier.height(48.dp))
         
-        // Username Field
-        Column {
-            BodyText(
-                text = "Username",
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = username,
-                onValueChange = { 
-                    username = it
-                    errorMessage = ""
-                },
-                placeholder = {
-                    Text(
-                        text = "Enter your username",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                },
+        // Email Field - Remove label to match mockup
+        OutlinedTextField(
+            value = username,
+            onValueChange = { 
+                username = it
+                errorMessage = ""
+            },
+            placeholder = {
+                Text(
+                    text = "abc@email.com",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+            },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
+                        imageVector = Icons.Default.Email,
+                        contentDescription = "Email",
+                        tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                ),
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
-        }
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                cursorColor = MaterialTheme.colorScheme.primary
+            ),
+            textStyle = MaterialTheme.typography.bodyLarge
+        )
         
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Password Field
-        Column {
-            BodyText(
-                text = "Password",
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            OutlinedTextField(
-                value = password,
-                onValueChange = { 
-                    password = it
-                    errorMessage = ""
-                },
-                placeholder = {
-                    Text(
-                        text = "Enter your password",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                },
+        Spacer(modifier = Modifier.height(24.dp))        // Password Field - Remove label to match mockup
+        OutlinedTextField(
+            value = password,
+            onValueChange = { 
+                password = it
+                errorMessage = ""
+            },
+            placeholder = {
+                Text(
+                    text = "Your password",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+            },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Lock,
@@ -181,19 +179,25 @@ fun SignInPage(
                 ),
                 textStyle = MaterialTheme.typography.bodyLarge
             )
-        }
         
-        // Forgot Password Link
+        // Forgot Password Link - with interactive state
         Spacer(modifier = Modifier.height(16.dp))
+        
+        val forgotPasswordInteractionSource = remember { MutableInteractionSource() }
+        val isForgotPasswordPressed by forgotPasswordInteractionSource.collectIsPressedAsState()
         
         TextButton(
             onClick = onForgotPasswordClick,
-            modifier = Modifier.align(Alignment.End)
+            modifier = Modifier.align(Alignment.End),
+            interactionSource = forgotPasswordInteractionSource
         ) {
             Text(
                 text = "Forgot Password?",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = if (isForgotPasswordPressed) 
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                else 
+                    MaterialTheme.colorScheme.primary
             )
         }
         
@@ -205,54 +209,43 @@ fun SignInPage(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        // Sign In Button
+        // Sign In Button - Changed to "Login" to match mockup
         PrimaryButton(
-            text = "Sign In",
+            text = "Login",
             onClick = {
                 when {
-                    username.isEmpty() -> errorMessage = "Username is required"
+                    username.isEmpty() -> errorMessage = "Email is required"
                     password.isEmpty() -> errorMessage = "Password is required"
                     else -> {
                         onSignInClick(username, password)
                     }
                 }
-            }
+            },
+            modifier = Modifier.fillMaxWidth()
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
-        // Or divider
-        BodyText(
-            text = "or",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Create Account Button
-        SecondaryButton(
-            text = "Create New Account",
-            onClick = onSignUpClick
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Sign Up Link
+        // Sign Up Link - Updated to match mockup with interactive state
         Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BodyText(
-                text = "Don't have an account? ",
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
+            val signUpInteractionSource = remember { MutableInteractionSource() }
+            val isSignUpPressed by signUpInteractionSource.collectIsPressedAsState()
+            
             TextButton(
-                onClick = onSignUpClick
+                onClick = onSignUpClick,
+                interactionSource = signUpInteractionSource
             ) {
                 Text(
-                    text = "Sign Up",
+                    text = "Don't have an account? Sign Up",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isSignUpPressed) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    else 
+                        MaterialTheme.colorScheme.primary
                 )
             }
         }

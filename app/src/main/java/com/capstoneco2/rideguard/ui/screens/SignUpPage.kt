@@ -1,6 +1,9 @@
 package com.capstoneco2.rideguard.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,13 +37,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.ui.components.BodyText
 import com.capstoneco2.rideguard.ui.components.ErrorText
 import com.capstoneco2.rideguard.ui.components.MainHeader
@@ -71,16 +78,26 @@ fun SignUpPage(
     ) {
         Spacer(modifier = Modifier.height(32.dp))
         
-        // Header
+        Image(
+            painter = painterResource(id = R.drawable.helmet_logo),
+            contentDescription = "RideGuard Helmet Logo",
+            modifier = Modifier.size(80.dp),
+            contentScale = ContentScale.Fit
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Header - Larger and more prominent like in mockup
         MainHeader(
-            text = "Create Account",
-            textAlign = TextAlign.Center
+            text = "Sign Up",
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.primary
         )
         
         Spacer(modifier = Modifier.height(8.dp))
         
         BodyText(
-            text = "Join RideGuard and start your sustainable journey",
+            text = "Sign up now to use Rideguard!",
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )
@@ -170,7 +187,7 @@ fun SignUpPage(
         
         // Sign Up Button
         PrimaryButton(
-            text = "Create Account",
+            text = "Sign Up",
             onClick = {
                 when {
                     username.isEmpty() -> errorMessage = "Username is required"
@@ -185,29 +202,32 @@ fun SignUpPage(
                         onSignUpClick(username, phoneNumber, email, password, confirmPassword)
                     }
                 }
-            }
+            },
+            modifier = Modifier.fillMaxWidth()
         )
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Sign In Link - Centered
+                // Sign In Link - Like in mockup with blue text and interactive states
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Already have an account? ",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            
             TextButton(
-                onClick = onSignInClick
+                onClick = onSignInClick,
+                interactionSource = interactionSource
             ) {
                 Text(
-                    text = "Login",
+                    text = "Already have an account? Sign In Now",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isPressed) 
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    else 
+                        MaterialTheme.colorScheme.primary
                 )
             }
         }

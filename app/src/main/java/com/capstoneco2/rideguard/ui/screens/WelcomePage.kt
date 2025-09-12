@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -32,91 +33,73 @@ fun WelcomePage(
     onGetStartedClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+        modifier = Modifier.fillMaxSize()
     ) {
-        Column(
+        // Full-screen motorcycle image
+        Image(
+            painter = painterResource(id = R.drawable.motorcycle_welcome_image),
+            contentDescription = "RideGuard Motorcycle",
             modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Upper section with image - takes about 60% of screen
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.6f),
-                contentAlignment = Alignment.Center
-            ) {
-                // Placeholder for your app image/illustration
-                // Replace this with your actual image resource
-                Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            shape = androidx.compose.foundation.shape.CircleShape
+            contentScale = ContentScale.Crop
+        )
+        
+        // Gradient overlay from transparent to black at the bottom
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.3f),
+                            Color.Black.copy(alpha = 0.8f),
+                            Color.Black
                         ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // For now, using a placeholder. Replace with:
-                    // Image(
-                    //     painter = painterResource(id = R.drawable.your_welcome_image),
-                    //     contentDescription = "RideGuard Welcome",
-                    //     modifier = Modifier.size(180.dp),
-                    //     contentScale = ContentScale.Fit
-                    // )
-                    BodyText(
-                        text = "🚗\n🌱",
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.primary
+                        startY = 0f,
+                        endY = Float.POSITIVE_INFINITY
                     )
-                }
-            }
+                )
+        )
+        
+        // Text content overlaying the image at the bottom
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            // App title
+            MainHeader(
+                text = "RideGuard:",
+                textAlign = TextAlign.Center,
+                color = Color.White
+            )
             
-            // Lower section with text and button - takes about 40% of screen
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.4f)
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // App name and catchline
-                MainHeader(
-                    text = "RideGuard",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                BodyText(
-                    text = "Your Smart CO₂ Companion",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Tagline/Subtitle
-                BodyText(
-                    text = "Monitor, reduce, and offset your carbon footprint while traveling. Make every journey count for a greener tomorrow.",
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                )
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                
-                // Get Started Button
-                PrimaryButton(
-                    text = "Get Started",
-                    onClick = onGetStartedClick,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-            }
+            MainHeader(
+                text = "Ride Safely. Go Home Properly.",
+                textAlign = TextAlign.Center,
+                color = Color.White
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Subtitle
+            BodyText(
+                text = "Start now to enjoy our services, from notifications for emergencies, riding data summarizations, and many else!",
+                textAlign = TextAlign.Center,
+                color = Color.White.copy(alpha = 0.9f)
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            // Get Started Button
+            PrimaryButton(
+                text = "Get Started",
+                onClick = onGetStartedClick,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
