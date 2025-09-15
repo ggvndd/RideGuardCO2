@@ -1,9 +1,16 @@
 package com.capstoneco2.rideguard.ui.screens
 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -13,40 +20,77 @@ import com.capstoneco2.rideguard.ui.components.BottomNavigationBar
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
-fun MainApp(
-    userName: String = "User",
-    userEmail: String = "user@example.com"
-) {
-    var currentRoute by remember { mutableStateOf("home") }
-    
-    Scaffold(
-        bottomBar = {
+fun MainApp(username: String) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var showTutorialDetail by remember { mutableStateOf(false) }
+    var selectedTutorialId by remember { mutableStateOf("") }
+
+    if (showTutorialDetail) {
+        TutorialDetailScreen(
+            tutorialId = selectedTutorialId,
+            onBackClick = { showTutorialDetail = false }
+        )
+    } else {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Main content
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        slideInHorizontally(
+                            initialOffsetX = { width ->
+                                if (targetState > initialState) width else -width
+                            }
+                        ) togetherWith slideOutHorizontally(
+                            targetOffsetX = { width ->
+                                if (targetState > initialState) -width else width
+                            }
+                        )
+                    },
+                    label = "tab_transition"
+                ) { tabIndex ->
+                    when (tabIndex) {
+                        0 -> HomeScreen(userName = username)
+                        1 -> BlackboxScreen()
+                        2 -> TutorialScreen(
+                            onTutorialClick = { tutorialId ->
+                                selectedTutorialId = tutorialId
+                                showTutorialDetail = true
+                            }
+                        )
+                        3 -> SettingsScreen(
+                            userName = username,
+                            userEmail = "$username@rideguard.com"
+                        )
+                    }
+                }
+            }
+
+            // Bottom Navigation
             BottomNavigationBar(
-                currentRoute = currentRoute,
+                currentRoute = when (selectedTab) {
+                    0 -> "home"
+                    1 -> "blackbox" 
+                    2 -> "tutorial"
+                    3 -> "settings"
+                    else -> "home"
+                },
                 onNavigate = { route ->
-                    currentRoute = route
+                    selectedTab = when (route) {
+                        "home" -> 0
+                        "blackbox" -> 1
+                        "tutorial" -> 2
+                        "settings" -> 3
+                        else -> 0
+                    }
                 }
             )
-        }
-    ) { paddingValues ->
-        when (currentRoute) {
-            "home" -> {
-                HomeScreen(
-                    userName = userName
-                )
-            }
-            "blackbox" -> {
-                BlackboxScreen()
-            }
-            "tutorial" -> {
-                TutorialScreen()
-            }
-            "settings" -> {
-                SettingsScreen(
-                    userName = userName,
-                    userEmail = userEmail
-                )
-            }
         }
     }
 }
@@ -55,10 +99,7 @@ fun MainApp(
 @Composable
 fun MainAppPreview() {
     MyAppTheme {
-        MainApp(
-            userName = "John Doe",
-            userEmail = "john.doe@example.com"
-        )
+        MainApp(username = "John Doe")
     }
 }
 
@@ -66,9 +107,6 @@ fun MainAppPreview() {
 @Composable
 fun MainAppDarkPreview() {
     MyAppTheme(darkTheme = true) {
-        MainApp(
-            userName = "John Doe",
-            userEmail = "john.doe@example.com"
-        )
+        MainApp(username = "John Doe")
     }
 }

@@ -127,10 +127,7 @@ fun RideGuardApp() {
             }
             
             AppScreen.MAIN_APP -> {
-                MainApp(
-                    userName = userData.username,
-                    userEmail = userData.email
-                )
+                MainApp(username = userData.username)
             }
         }
     }
