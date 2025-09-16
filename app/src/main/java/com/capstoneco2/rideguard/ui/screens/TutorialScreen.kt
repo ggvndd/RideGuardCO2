@@ -20,9 +20,7 @@ import com.capstoneco2.rideguard.ui.components.TutorialItemCard
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
-fun TutorialScreen(
-    onTutorialClick: (String) -> Unit = { }
-) {
+fun TutorialScreen() {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -31,16 +29,18 @@ fun TutorialScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp)) // Increased spacing from top
             
             // Header
             MainHeader(
-                text = "Tutorials",
-                textAlign = TextAlign.Start
+                text = "Tutorial",
+                textAlign = TextAlign.Start,
+                color = com.capstoneco2.rideguard.ui.theme.Blue80
             )
             
             BodyText(
-                text = "Learn how to use RideGuard optimally by this curated guides",
+                text = "Learn how to use RideGuard optimally by \n" +
+                        "this curated guides",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
         }
@@ -50,7 +50,7 @@ fun TutorialScreen(
             TutorialItemCard(
                 title = tutorial.title,
                 icon = tutorial.icon,
-                onClick = { onTutorialClick(tutorial.id) }
+                onClick = { /* Handle tutorial click */ }
             )
         }
         
@@ -61,19 +61,18 @@ fun TutorialScreen(
 }
 
 data class SimpleTutorialItem(
-    val id: String,
     val title: String,
     val icon: String
 )
 
 fun getTutorialItems(): List<SimpleTutorialItem> {
     return listOf(
-        SimpleTutorialItem("getting_started", "Getting Started", "🚀"),
-        SimpleTutorialItem("track_trip", "Track Your Trip", "🛣️"),
-        SimpleTutorialItem("view_statistics", "View Statistics", "📊"),
-        SimpleTutorialItem("blackbox_features", "Blackbox Features", "📦"),
-        SimpleTutorialItem("settings_guide", "Settings Guide", "⚙️"),
-        SimpleTutorialItem("faq", "FAQ", "❓")
+        SimpleTutorialItem("Getting Started", "🚀"),
+        SimpleTutorialItem("Track Your Trip", "🛣️"),
+        SimpleTutorialItem("View Statistics", "📊"),
+        SimpleTutorialItem("Blackbox Features", "📦"),
+        SimpleTutorialItem("Settings Guide", "⚙️"),
+        SimpleTutorialItem("FAQ", "❓")
     )
 }
 

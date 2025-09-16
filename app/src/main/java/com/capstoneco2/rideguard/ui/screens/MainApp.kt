@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -21,19 +20,11 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
 fun MainApp(username: String) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var showTutorialDetail by remember { mutableStateOf(false) }
-    var selectedTutorialId by remember { mutableStateOf("") }
+    var selectedTab by remember { mutableStateOf(0) }
 
-    if (showTutorialDetail) {
-        TutorialDetailScreen(
-            tutorialId = selectedTutorialId,
-            onBackClick = { showTutorialDetail = false }
-        )
-    } else {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
             // Main content
             Box(
                 modifier = Modifier
@@ -58,16 +49,8 @@ fun MainApp(username: String) {
                     when (tabIndex) {
                         0 -> HomeScreen(userName = username)
                         1 -> BlackboxScreen()
-                        2 -> TutorialScreen(
-                            onTutorialClick = { tutorialId ->
-                                selectedTutorialId = tutorialId
-                                showTutorialDetail = true
-                            }
-                        )
-                        3 -> SettingsScreen(
-                            userName = username,
-                            userEmail = "$username@rideguard.com"
-                        )
+                        2 -> TutorialScreen()
+                        3 -> SettingsScreen()
                     }
                 }
             }
@@ -93,7 +76,6 @@ fun MainApp(username: String) {
             )
         }
     }
-}
 
 @Preview(showBackground = true)
 @Composable
