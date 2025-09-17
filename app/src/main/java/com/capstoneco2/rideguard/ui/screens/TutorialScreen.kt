@@ -45,11 +45,11 @@ fun TutorialScreen() {
             )
         }
         
-        // Tutorial Items
+        // Tutorial Items - Updated with placeholders and author names
         items(getTutorialItems()) { tutorial ->
             TutorialItemCard(
                 title = tutorial.title,
-                icon = tutorial.icon,
+                author = tutorial.author,
                 onClick = { /* Handle tutorial click */ }
             )
         }
@@ -62,17 +62,14 @@ fun TutorialScreen() {
 
 data class SimpleTutorialItem(
     val title: String,
-    val icon: String
+    val author: String
 )
 
 fun getTutorialItems(): List<SimpleTutorialItem> {
     return listOf(
-        SimpleTutorialItem("Getting Started", "🚀"),
-        SimpleTutorialItem("Track Your Trip", "🛣️"),
-        SimpleTutorialItem("View Statistics", "📊"),
-        SimpleTutorialItem("Blackbox Features", "📦"),
-        SimpleTutorialItem("Settings Guide", "⚙️"),
-        SimpleTutorialItem("FAQ", "❓")
+        SimpleTutorialItem("Lorem ipsum dolor amet", "Author Name Goes Here"),
+        SimpleTutorialItem("Lorem ipsum dolor amet", "Author Name Goes Here"),
+        SimpleTutorialItem("Lorem ipsum dolor amet", "Author Name Goes Here")
     )
 }
 

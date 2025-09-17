@@ -23,6 +23,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -115,19 +116,18 @@ fun SettingsScreen(
         }
         
         item {
-            // Notification Repeat Interval - Add as separate item to ensure proper layout
-            BodyText(
-                text = "Repeat Interval",
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Dropdown Box - Right aligned
+            // Repeat Interval Row - Text and dropdown in same row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = "Repeat Interval",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                
                 Box {
                     Box(
                         modifier = Modifier
@@ -138,8 +138,9 @@ fun SettingsScreen(
                             .clickable { showDropdown = true }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        BodyText(
+                        Text(
                             text = "$selectedInterval ▼",
+                            style = MaterialTheme.typography.bodyLarge,
                             color = Color.White
                         )
                     }
@@ -185,12 +186,10 @@ private fun UserProfileCard(
     onSignOutClick: () -> Unit
 ) {
     Column {
-        // Profile Label - Plain black text, left aligned
-        BodyText(
+        // Profile Label - Same size as Notifications section
+        SectionHeader(
             text = "Profile",
-            color = Color.Black,
-            textAlign = TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
+            textAlign = TextAlign.Start
         )
         
         Spacer(modifier = Modifier.height(16.dp))
