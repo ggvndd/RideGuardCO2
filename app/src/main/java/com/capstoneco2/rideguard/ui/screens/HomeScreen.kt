@@ -1,6 +1,9 @@
 package com.capstoneco2.rideguard.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,30 +16,44 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.ui.components.BodyText
-import androidx.compose.ui.graphics.Brush
 import com.capstoneco2.rideguard.ui.components.MainHeader
+import com.capstoneco2.rideguard.ui.components.PrimaryButton
 import com.capstoneco2.rideguard.ui.components.SectionHeader
+import com.capstoneco2.rideguard.ui.theme.Blue80
+import com.capstoneco2.rideguard.ui.theme.Black80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
 fun HomeScreen(
-    userName: String = "User"
+    userName: String = "User",
+    onNavigateToBlackbox: () -> Unit = {}
 ) {
+    var isBlackboxOnline by remember { mutableStateOf(true) }
+    var batteryLevel by remember { mutableStateOf("100%") }
+    var blackboxSerialNumber by remember { mutableStateOf("Lorem Ipsum") }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -45,19 +62,33 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Welcome Header
-            Column {
-                BodyText(
-                    text = "Welcome,",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Start
-                )
-                MainHeader(
-                    text = "$userName!",
-                    textAlign = TextAlign.Start
-                )
+            Spacer(modifier = Modifier.height(32.dp))
+            // Welcome Header with Dark Background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Black80,
+                        RoundedCornerShape(16.dp)
+                    )
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "Welcome,",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "$userName!",
+                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
         
@@ -69,32 +100,39 @@ fun HomeScreen(
             ) {
                 StatusCard(
                     modifier = Modifier.weight(1f),
-                    title = "Blackbox Status",
-                    value = "Online",
-                    valueColor = Color(0xFF06A759) // Green
+                    title = "Blackbox Status:",
+                    value = if (isBlackboxOnline) "Online" else "Offline",
+                    valueColor = if (isBlackboxOnline) Color(0xFF06A759) else Color(0xFFFF6B6B),
+                    onClick = { isBlackboxOnline = !isBlackboxOnline }
                 )
                 StatusCard(
                     modifier = Modifier.weight(1f),
-                    title = "Battery",
-                    value = "100%",
-                    valueColor = Color(0xFF06A759) // Green
+                    title = "Battery:",
+                    value = batteryLevel,
+                    valueColor = Color(0xFF06A759),
+                    onClick = { /* Handle battery click */ }
                 )
             }
         }
         
         item {
-            // Blackbox Serial Number Card
-            BlackboxSerialCard()
+            // Blackbox Connected Card with Image Background
+            BlackboxConnectedCard(
+                blackboxName = blackboxSerialNumber,
+                isOnline = isBlackboxOnline
+            )
         }
         
         item {
-            // Pulsa Balance
+            // Pulsa Balance Section
             PulsaBalanceSection()
         }
         
         item {
-            // Emergency Contacts
-            EmergencyContactsSection()
+            // Emergency Contacts Section
+            EmergencyContactsSection(
+                onAddAnotherClick = onNavigateToBlackbox
+            )
         }
         
         item {
@@ -108,71 +146,117 @@ private fun StatusCard(
     title: String,
     value: String,
     valueColor: Color,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.Start
         ) {
-            BodyText(
+            Text(
                 text = title,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
                 textAlign = TextAlign.Start
             )
             Spacer(modifier = Modifier.height(4.dp))
-            BodyText(
+            Text(
                 text = value,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = valueColor,
-                textAlign = TextAlign.Start,
-                modifier = Modifier
+                textAlign = TextAlign.Start
             )
         }
     }
 }
 
 @Composable
-private fun BlackboxSerialCard() {
+private fun BlackboxConnectedCard(
+    blackboxName: String,
+    isOnline: Boolean
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp),
+            .height(200.dp)
+            .border(
+                width = 2.dp,
+                color = Blue80,
+                shape = RoundedCornerShape(16.dp)
+            ),
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent
         ),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                )
+            modifier = Modifier.fillMaxSize()
         ) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.motorcycle_welcome_image),
+                contentDescription = "Blackbox Background",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Dark Overlay for better text visibility
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Color.Black.copy(alpha = 0.4f),
+                        RoundedCornerShape(16.dp)
+                    )
+            )
+            
+            // Content
+            // Content - Centered both vertically and horizontally
             Column(
-                modifier = Modifier.padding(20.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                BodyText(
-                    text = "Blackbox Serial Number",
-                    color = Color.White.copy(alpha = 0.9f)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                MainHeader(
-                    text = "Lorem Ipsum",
+                // Top Label
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.primary,
+                            RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Blackbox Serial Number",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Main Text - Centered
+                Text(
+                    text = blackboxName,
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                     color = Color.White,
-                    textAlign = TextAlign.Start
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -181,54 +265,96 @@ private fun BlackboxSerialCard() {
 
 @Composable
 private fun PulsaBalanceSection() {
-    Column {
-        SectionHeader(
-            text = "Pulsa Balance",
-            textAlign = TextAlign.Start
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        MainHeader(
-            text = "Rp5000,00",
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Start
+   Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column {
+                Text(
+                    text = "Pulsa Balance",
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Rp5000,00",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        
+            // Custom button with smaller font
+            Card(
+                modifier = Modifier
+                    .width(150.dp)
+                    .clickable { /* Handle add pulsa */ },
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Add More Pulsa",
+                        style = MaterialTheme.typography.bodySmall, // Made smaller
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Divider(
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
         )
     }
 }
 
 @Composable
-private fun EmergencyContactsSection() {
+private fun EmergencyContactsSection(
+    onAddAnotherClick: () -> Unit
+) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SectionHeader(
+            Text(
                 text = "Emergency Contacts",
-                textAlign = TextAlign.Start
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onBackground
             )
-            BodyText(
+            Text(
                 text = "Add Another",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.End
+                modifier = Modifier.clickable { onAddAnotherClick() }
             )
         }
         
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         
-        // Emergency Contact Chips in Grid
+        // Emergency Contact Chips in Grid (2x2)
         val contacts = listOf(
-            "John Doe", "Lorem Ipsum", 
+            "John Doe", "Lorem Ipsum",
             "Jonathan Joestar", "John Doe"
         )
         
-        // Split contacts into rows of 2
         val contactRows = contacts.chunked(2)
         
         contactRows.forEach { rowContacts ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 rowContacts.forEach { contact ->
                     EmergencyContactChip(
@@ -236,12 +362,14 @@ private fun EmergencyContactsSection() {
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // Fill remaining space if odd number of contacts in row
+                // Fill remaining space if odd number of contacts
                 if (rowContacts.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            if (rowContacts != contactRows.last()) {
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
 }
@@ -254,30 +382,24 @@ private fun EmergencyContactChip(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
         ),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            BodyText(
+            Text(
                 text = name,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    MyAppTheme {
-        HomeScreen("John Doe")
     }
 }
 
