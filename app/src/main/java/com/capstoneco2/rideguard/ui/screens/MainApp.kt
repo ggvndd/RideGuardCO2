@@ -21,6 +21,7 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 @Composable
 fun MainApp(username: String) {
     var selectedTab by remember { mutableStateOf(0) }
+    var showPulsaBalanceScreen by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -31,26 +32,41 @@ fun MainApp(username: String) {
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    transitionSpec = {
-                        slideInHorizontally(
-                            initialOffsetX = { width ->
-                                if (targetState > initialState) width else -width
-                            }
-                        ) togetherWith slideOutHorizontally(
-                            targetOffsetX = { width ->
-                                if (targetState > initialState) -width else width
-                            }
-                        )
-                    },
-                    label = "tab_transition"
-                ) { tabIndex ->
-                    when (tabIndex) {
-                        0 -> HomeScreen(userName = username)
-                        1 -> BlackboxScreen()
-                        2 -> TutorialScreen()
-                        3 -> SettingsScreen()
+                if (showPulsaBalanceScreen) {
+                    PulsaBalanceScreen(
+                        onBackClick = { showPulsaBalanceScreen = false }
+                    )
+                } else {
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = {
+                            slideInHorizontally(
+                                initialOffsetX = { width ->
+                                    if (targetState > initialState) width else -width
+                                }
+                            ) togetherWith slideOutHorizontally(
+                                targetOffsetX = { width ->
+                                    if (targetState > initialState) -width else width
+                                }
+                            )
+                        },
+                        label = "tab_transition"
+                    ) { tabIndex ->
+                        when (tabIndex) {
+                            0 -> HomeScreen(
+                                userName = username,
+                                onNavigateToPulsaBalance = { showPulsaBalanceScreen = true },
+                                onNavigateToBlackbox = { 
+                                    showPulsaBalanceScreen = false
+                                    selectedTab = 1 
+                                }
+                            )
+                            1 -> BlackboxScreen(
+                                onNavigateToPulsaBalance = { showPulsaBalanceScreen = true }
+                            )
+                            2 -> TutorialScreen()
+                            3 -> SettingsScreen()
+                        }
                     }
                 }
             }
@@ -65,6 +81,8 @@ fun MainApp(username: String) {
                     else -> "home"
                 },
                 onNavigate = { route ->
+                    // Close PulsaBalance screen and navigate to requested tab
+                    showPulsaBalanceScreen = false
                     selectedTab = when (route) {
                         "home" -> 0
                         "blackbox" -> 1

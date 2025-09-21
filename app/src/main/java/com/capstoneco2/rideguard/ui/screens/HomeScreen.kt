@@ -48,6 +48,7 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 @Composable
 fun HomeScreen(
     userName: String = "User",
+    onNavigateToPulsaBalance: () -> Unit = {},
     onNavigateToBlackbox: () -> Unit = {}
 ) {
     var isBlackboxOnline by remember { mutableStateOf(true) }
@@ -125,7 +126,9 @@ fun HomeScreen(
         
         item {
             // Pulsa Balance Section
-            PulsaBalanceSection()
+            PulsaBalanceSection(
+                onNavigateToPulsaBalance = onNavigateToPulsaBalance
+            )
         }
         
         item {
@@ -264,7 +267,9 @@ private fun BlackboxConnectedCard(
 }
 
 @Composable
-private fun PulsaBalanceSection() {
+private fun PulsaBalanceSection(
+    onNavigateToPulsaBalance: () -> Unit = {}
+) {
    Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -287,7 +292,7 @@ private fun PulsaBalanceSection() {
             Card(
                 modifier = Modifier
                     .width(150.dp)
-                    .clickable { /* Handle add pulsa */ },
+                    .clickable { onNavigateToPulsaBalance() },
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 ),

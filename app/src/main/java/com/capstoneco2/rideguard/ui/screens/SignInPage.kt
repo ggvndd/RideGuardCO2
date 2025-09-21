@@ -181,7 +181,6 @@ fun SignInPage(
             )
         
         // Forgot Password Link - with interactive state
-        Spacer(modifier = Modifier.height(16.dp))
         
         val forgotPasswordInteractionSource = remember { MutableInteractionSource() }
         val isForgotPasswordPressed by forgotPasswordInteractionSource.collectIsPressedAsState()
@@ -223,8 +222,6 @@ fun SignInPage(
             },
             modifier = Modifier.fillMaxWidth()
         )
-        
-        Spacer(modifier = Modifier.height(24.dp))
         
         // Sign Up Link - Updated to match mockup with interactive state
         Row(

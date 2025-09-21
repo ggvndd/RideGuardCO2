@@ -205,9 +205,6 @@ fun SignUpPage(
             },
             modifier = Modifier.fillMaxWidth()
         )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
                 // Sign In Link - Like in mockup with blue text and interactive states
         Row(
             modifier = Modifier.fillMaxWidth(),
