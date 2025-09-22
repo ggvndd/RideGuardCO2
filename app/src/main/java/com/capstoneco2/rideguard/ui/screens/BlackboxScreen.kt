@@ -78,13 +78,6 @@ enum class BlackboxPairingState {
     PAIRING_SUCCESS
 }
 
-// Enum for traffic accident detection states
-enum class TrafficAccidentDialogState {
-    ACCIDENT_DETECTED,
-    LOCATION_VIEW,
-    EMERGENCY_SERVICES_CALLED
-}
-
 @Composable
 fun BlackboxScreen(
     onNavigateToPulsaBalance: () -> Unit = {}
@@ -1149,73 +1142,6 @@ private fun PairingSuccessContent(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-    }
-}
-
-@Composable
-fun TrafficAccidentDialog(
-    onDismiss: () -> Unit,
-    onAccidentCardCreated: () -> Unit = {}
-) {
-    var dialogState by remember { mutableStateOf(TrafficAccidentDialogState.ACCIDENT_DETECTED) }
-    
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            // Dialog Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 32.dp)
-                    .clickable(enabled = false) { }, // Prevent click through
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                when (dialogState) {
-                    TrafficAccidentDialogState.ACCIDENT_DETECTED -> {
-                        AccidentDetectedContent(
-                            onCheckLocation = { 
-                                dialogState = TrafficAccidentDialogState.LOCATION_VIEW 
-                            },
-                            onCallEmergency = { 
-                                dialogState = TrafficAccidentDialogState.EMERGENCY_SERVICES_CALLED 
-                            },
-                            onClose = {
-                                onAccidentCardCreated()
-                                onDismiss()
-                            }
-                        )
-                    }
-                    TrafficAccidentDialogState.LOCATION_VIEW -> {
-                        LocationViewContent(
-                            onCallEmergency = { 
-                                dialogState = TrafficAccidentDialogState.EMERGENCY_SERVICES_CALLED 
-                            },
-                            onClose = {
-                                onAccidentCardCreated()
-                                onDismiss()
-                            }
-                        )
-                    }
-                    TrafficAccidentDialogState.EMERGENCY_SERVICES_CALLED -> {
-                        EmergencyServicesCalledContent(
-                            onClose = {
-                                onAccidentCardCreated()
-                                onDismiss()
-                            }
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
