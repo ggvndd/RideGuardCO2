@@ -49,7 +49,8 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 fun HomeScreen(
     userName: String = "User",
     onNavigateToPulsaBalance: () -> Unit = {},
-    onNavigateToBlackbox: () -> Unit = {}
+    onNavigateToBlackbox: () -> Unit = {},
+    showAccidentCard: Boolean = false
 ) {
     var isBlackboxOnline by remember { mutableStateOf(true) }
     var batteryLevel by remember { mutableStateOf("100%") }
@@ -122,6 +123,16 @@ fun HomeScreen(
                 blackboxName = blackboxSerialNumber,
                 isOnline = isBlackboxOnline
             )
+        }
+        
+        // Traffic Accident Card (conditional)
+        if (showAccidentCard) {
+            item {
+                TrafficAccidentCard(
+                    userName = "Lorem Ipsum",
+                    onMoreDetailsClick = { /* Handle more details */ }
+                )
+            }
         }
         
         item {
@@ -404,6 +415,70 @@ private fun EmergencyContactChip(
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+@Composable
+private fun TrafficAccidentCard(
+    userName: String,
+    onMoreDetailsClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.error
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Traffic Accident\nDetected",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "User: $userName",
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // More Details Button
+            Box(
+                modifier = Modifier
+                    .border(
+                        width = 2.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onMoreDetailsClick() }
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = "More Details",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = Color.White
+                )
+            }
         }
     }
 }

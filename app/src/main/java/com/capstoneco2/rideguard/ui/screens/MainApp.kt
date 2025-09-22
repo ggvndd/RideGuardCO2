@@ -22,6 +22,7 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 fun MainApp(username: String) {
     var selectedTab by remember { mutableStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
+    var showAccidentCard by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -59,13 +60,16 @@ fun MainApp(username: String) {
                                 onNavigateToBlackbox = { 
                                     showPulsaBalanceScreen = false
                                     selectedTab = 1 
-                                }
+                                },
+                                showAccidentCard = showAccidentCard
                             )
                             1 -> BlackboxScreen(
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true }
                             )
                             2 -> TutorialScreen()
-                            3 -> SettingsScreen()
+                            3 -> SettingsScreen(
+                                onAccidentDetected = { showAccidentCard = true }
+                            )
                         }
                     }
                 }

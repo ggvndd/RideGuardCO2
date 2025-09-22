@@ -44,6 +44,7 @@ import com.capstoneco2.rideguard.ui.components.MainHeader
 import com.capstoneco2.rideguard.ui.components.PrimaryButton
 import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.components.SecondaryButton
+import com.capstoneco2.rideguard.ui.components.TrafficAccidentDialog
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
@@ -51,11 +52,13 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 fun SettingsScreen(
     userName: String = "John Doe",
     userEmail: String = "john.doe@example.com",
-    onSignOutClick: () -> Unit = { }
+    onSignOutClick: () -> Unit = { },
+    onAccidentDetected: () -> Unit = { }
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var selectedInterval by remember { mutableStateOf("60 Seconds") }
     var showDropdown by remember { mutableStateOf(false) }
+    var showAccidentDialog by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -174,9 +177,46 @@ fun SettingsScreen(
         }
         
         item {
+            // Testing Section
+            SectionHeader(text = "Testing")
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Simulate Accident Button
+            PrimaryButton(
+                text = "Simulate Traffic Accident",
+                onClick = { showAccidentDialog = true },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            BodyText(
+                text = "This button simulates a traffic accident detection for testing purposes.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        item {
             Spacer(modifier = Modifier.height(80.dp)) // Space for bottom nav
         }
     }
+    
+    // Traffic Accident Dialog
+    TrafficAccidentDialog(
+        isVisible = showAccidentDialog,
+        onDismiss = { showAccidentDialog = false },
+        onCheckLocation = { 
+            // Handle check location logic
+        },
+        onCallEmergencyServices = { 
+            // Handle emergency services logic
+        },
+        onClose = { 
+            showAccidentDialog = false
+            onAccidentDetected() // Notify parent to create accident card
+        }
+    )
 }
 
 @Composable
