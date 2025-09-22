@@ -79,7 +79,7 @@ fun TrafficAccidentDialog(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp)
+                        .padding(16.dp)
                         .clickable(enabled = false) { },
                     colors = CardDefaults.cardColors(
                         containerColor = Color.White

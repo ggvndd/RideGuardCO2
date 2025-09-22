@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.capstoneco2.rideguard.ui.components.BottomNavigationBar
+import com.capstoneco2.rideguard.ui.components.TrafficAccidentDialog
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
@@ -23,6 +24,7 @@ fun MainApp(username: String) {
     var selectedTab by remember { mutableStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
+    var showAccidentDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -61,14 +63,15 @@ fun MainApp(username: String) {
                                     showPulsaBalanceScreen = false
                                     selectedTab = 1 
                                 },
-                                showAccidentCard = showAccidentCard
+                                showAccidentCard = showAccidentCard,
+                                onShowAccidentDialog = { showAccidentDialog = true }
                             )
                             1 -> BlackboxScreen(
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true }
                             )
                             2 -> TutorialScreen()
                             3 -> SettingsScreen(
-                                onAccidentDetected = { showAccidentCard = true }
+                                onShowAccidentDialog = { showAccidentDialog = true }
                             )
                         }
                     }
@@ -97,6 +100,22 @@ fun MainApp(username: String) {
                 }
             )
         }
+        
+        // Traffic Accident Dialog - Global dialog that can be triggered from anywhere
+        TrafficAccidentDialog(
+            isVisible = showAccidentDialog,
+            onDismiss = { showAccidentDialog = false },
+            onCheckLocation = { 
+                // Handle check location logic
+            },
+            onCallEmergencyServices = { 
+                // Handle emergency services logic
+            },
+            onClose = { 
+                showAccidentDialog = false
+                showAccidentCard = true // Show the card on home screen after closing
+            }
+        )
     }
 
 @Preview(showBackground = true)

@@ -50,7 +50,8 @@ fun HomeScreen(
     userName: String = "User",
     onNavigateToPulsaBalance: () -> Unit = {},
     onNavigateToBlackbox: () -> Unit = {},
-    showAccidentCard: Boolean = false
+    showAccidentCard: Boolean = false,
+    onShowAccidentDialog: () -> Unit = {}
 ) {
     var isBlackboxOnline by remember { mutableStateOf(true) }
     var batteryLevel by remember { mutableStateOf("100%") }
@@ -130,7 +131,7 @@ fun HomeScreen(
             item {
                 TrafficAccidentCard(
                     userName = "Lorem Ipsum",
-                    onMoreDetailsClick = { /* Handle more details */ }
+                    onMoreDetailsClick = onShowAccidentDialog
                 )
             }
         }
