@@ -133,7 +133,7 @@ fun HomeScreen(
         
         item {
             // Emergency Contacts Section
-            EmergencyContactsSection(
+            HomeEmergencyContactsSection(
                 onAddAnotherClick = onNavigateToBlackbox
             )
         }
@@ -324,7 +324,7 @@ private fun PulsaBalanceSection(
 }
 
 @Composable
-private fun EmergencyContactsSection(
+private fun HomeEmergencyContactsSection(
     onAddAnotherClick: () -> Unit
 ) {
     Column {

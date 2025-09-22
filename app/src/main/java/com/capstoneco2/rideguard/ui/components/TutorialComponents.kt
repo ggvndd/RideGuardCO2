@@ -53,22 +53,6 @@ fun TutorialItemCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Start
         ) {
-            // Picture placeholder on the left
-            Box(
-                modifier = Modifier
-                    .size(70.dp)
-                    .background(
-                        Color.Gray.copy(alpha = 0.3f),
-                        RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                BodyText(
-                    text = "📷", // Placeholder camera icon
-                    color = Color.Gray
-                )
-            }
-            
             Spacer(modifier = Modifier.width(16.dp))
             
             // Title and author column

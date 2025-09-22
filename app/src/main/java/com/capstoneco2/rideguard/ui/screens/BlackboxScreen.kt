@@ -1,5 +1,16 @@
 package com.capstoneco2.rideguard.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +34,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,7 +47,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,23 +70,54 @@ enum class AddMemberDialogState {
     MEMBER_ADDED
 }
 
+// Enum for blackbox pairing states
+enum class BlackboxPairingState {
+    PAIRING_INPUT,
+    DEVICE_FOUND,
+    DEVICE_NOT_FOUND,
+    PAIRING_SUCCESS
+}
+
+// Enum for traffic accident detection states
+enum class TrafficAccidentDialogState {
+    ACCIDENT_DETECTED,
+    LOCATION_VIEW,
+    EMERGENCY_SERVICES_CALLED
+}
+
 @Composable
 fun BlackboxScreen(
     onNavigateToPulsaBalance: () -> Unit = {}
 ) {
-    var isDeviceOnline by remember { mutableStateOf(true) }
+    var isDeviceOnline by remember { mutableStateOf(false) } // Changed to false by default
     var deletionRate by remember { mutableStateOf("3 Hours") }
     var showDeletionDropdown by remember { mutableStateOf(false) }
     var showAddMemberDialog by remember { mutableStateOf(false) }
+    var showPairingDialog by remember { mutableStateOf(false) }
+    var deviceName by remember { mutableStateOf("No Device Connected") }
+    var isVisible by remember { mutableStateOf(false) }
+    
+    // Trigger visibility animation on composition
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = fadeIn(animationSpec = tween(600)) + slideInVertically(
+                animationSpec = tween(600, easing = androidx.compose.animation.core.EaseOutQuart),
+                initialOffsetY = { it / 3 }
+            ),
+            exit = fadeOut(animationSpec = tween(400))
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             item {
                 Spacer(modifier = Modifier.height(32.dp)) // Increased spacing from top
                 
@@ -95,24 +137,29 @@ fun BlackboxScreen(
             item {
                 // BlackBox Device Card
                 BlackBoxDeviceCard(
-                    deviceName = "BlackBox A",
+                    deviceName = deviceName,
                     isOnline = isDeviceOnline,
-                    onToggleStatus = { isDeviceOnline = !isDeviceOnline }
+                    onToggleStatus = { isDeviceOnline = !isDeviceOnline },
+                    onConnectDevice = { showPairingDialog = true }
                 )
             }
             
             item {
                 // Change RideGuard Device Button
                 SecondaryButton(
-                    text = "Change RideGuard Device",
-                    onClick = { /* Handle device change */ },
+                    text = if (isDeviceOnline && deviceName != "No Device Connected") 
+                           "Change RideGuard Device" 
+                           else "Connect to RideGuard Device",
+                    onClick = { showPairingDialog = true },
                     modifier = Modifier.fillMaxWidth()
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 BodyText(
-                    text = "Note: You can only pair to one device",
+                    text = if (isDeviceOnline && deviceName != "No Device Connected") 
+                           "Note: You can only pair to one device" 
+                           else "Note: Connect to your RideGuard device to get started",
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
@@ -152,11 +199,39 @@ fun BlackboxScreen(
                 Spacer(modifier = Modifier.height(80.dp)) // Space for bottom nav
             }
         }
+        }
         
-        // Add Member Dialog
-        if (showAddMemberDialog) {
+        // Add Member Dialog with Animation
+        AnimatedVisibility(
+            visible = showAddMemberDialog,
+            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
+                animationSpec = tween(300, easing = androidx.compose.animation.core.EaseOutBack)
+            ),
+            exit = fadeOut(animationSpec = tween(200)) + scaleOut(
+                animationSpec = tween(200, easing = androidx.compose.animation.core.EaseInBack)
+            )
+        ) {
             AddFamilyMemberDialog(
                 onDismiss = { showAddMemberDialog = false }
+            )
+        }
+        
+        // Blackbox Pairing Dialog with Animation
+        AnimatedVisibility(
+            visible = showPairingDialog,
+            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
+                animationSpec = tween(300, easing = androidx.compose.animation.core.EaseOutBack)
+            ),
+            exit = fadeOut(animationSpec = tween(200)) + scaleOut(
+                animationSpec = tween(200, easing = androidx.compose.animation.core.EaseInBack)
+            )
+        ) {
+            BlackboxPairingDialog(
+                onDismiss = { showPairingDialog = false },
+                onDeviceConnected = { serialNumber ->
+                    deviceName = "RideGuard $serialNumber"
+                    isDeviceOnline = true
+                }
             )
         }
     }
@@ -605,17 +680,581 @@ private fun MemberAddedContent(
 }
 
 @Composable
+fun BlackboxPairingDialog(
+    onDismiss: () -> Unit,
+    onDeviceConnected: (String) -> Unit
+) {
+    var dialogState by remember { mutableStateOf(BlackboxPairingState.PAIRING_INPUT) }
+    var serialNumber by remember { mutableStateOf("") }
+    var foundSerialNumber by remember { mutableStateOf("") }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Dialog Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 32.dp)
+                    .clickable(enabled = false) { }, // Prevent click through
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                when (dialogState) {
+                    BlackboxPairingState.PAIRING_INPUT -> {
+                        PairingInputContent(
+                            serialNumber = serialNumber,
+                            onSerialNumberChange = { serialNumber = it },
+                            onConfirm = {
+                                // Mock search logic - check if serial number exists
+                                if (serialNumber.uppercase().contains("A2DW12DF") || 
+                                    serialNumber.length >= 6) {
+                                    foundSerialNumber = serialNumber.uppercase()
+                                    dialogState = BlackboxPairingState.DEVICE_FOUND
+                                } else {
+                                    dialogState = BlackboxPairingState.DEVICE_NOT_FOUND
+                                }
+                            }
+                        )
+                    }
+                    BlackboxPairingState.DEVICE_FOUND -> {
+                        DeviceFoundContent(
+                            serialNumber = foundSerialNumber,
+                            onConfirm = { 
+                                dialogState = BlackboxPairingState.PAIRING_SUCCESS
+                            }
+                        )
+                    }
+                    BlackboxPairingState.DEVICE_NOT_FOUND -> {
+                        DeviceNotFoundContent(
+                            onTryAgain = { 
+                                serialNumber = ""
+                                dialogState = BlackboxPairingState.PAIRING_INPUT 
+                            }
+                        )
+                    }
+                    BlackboxPairingState.PAIRING_SUCCESS -> {
+                        PairingSuccessContent(
+                            onConfirm = {
+                                onDeviceConnected(foundSerialNumber)
+                                onDismiss()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PairingInputContent(
+    serialNumber: String,
+    onSerialNumberChange: (String) -> Unit,
+    onConfirm: () -> Unit
+) {
+    var isVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+    
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(tween(400)) + slideInVertically(
+            animationSpec = tween(400),
+            initialOffsetY = { it / 4 }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+        Text(
+            text = "Pairing Ongoing",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            ),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Input the serial number of the\nRideGuard Box",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Black.copy(alpha = 0.8f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Serial Number Input Field
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp)
+        ) {
+            BasicTextField(
+                value = serialNumber,
+                onValueChange = onSerialNumberChange,
+                modifier = Modifier.fillMaxWidth(),
+                textStyle = TextStyle(
+                    color = Color.Black,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                    textAlign = TextAlign.Center
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                decorationBox = { innerTextField ->
+                    if (serialNumber.isEmpty()) {
+                        Text(
+                            text = "Input Serial Number Here",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    innerTextField()
+                }
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Make sure you connected to the same network as the RideGuard Device",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Black.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Confirm Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(12.dp)
+                )
+                .clickable { onConfirm() }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Confirm",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = Color.White
+            )
+        }
+        }
+    }
+}
+
+@Composable
+private fun DeviceFoundContent(
+    serialNumber: String,
+    onConfirm: () -> Unit
+) {
+    var isVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+    
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(tween(400)) + scaleIn(
+            animationSpec = tween(400, easing = androidx.compose.animation.core.EaseOutBack)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+        Text(
+            text = "Pairing Ongoing",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            ),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Input the serial number of the\nRideGuard Box",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Black.copy(alpha = 0.8f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Serial Number Display Field
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp)
+        ) {
+            Text(
+                text = serialNumber,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Animated success text
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn(tween(500, delayMillis = 200)) + scaleIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+        ) {
+            Text(
+                text = "RideGuard Box Found!",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.Black,
+                textAlign = TextAlign.Center
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Make sure you connected to the same network as the RideGuard Device",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Black.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Confirm Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(12.dp)
+                )
+                .clickable { onConfirm() }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Confirm",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = Color.White
+            )
+        }
+        }
+    }
+}
+
+@Composable
+private fun DeviceNotFoundContent(
+    onTryAgain: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Pairing Ongoing",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            ),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Input the serial number of the\nRideGuard Box",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.Black.copy(alpha = 0.8f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Empty Serial Number Field
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Input Serial Number Here",
+                color = Color.Gray,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Text(
+            text = "RideGuard Box not found.",
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Make sure you connected to the same network as the RideGuard Device",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Black.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Try Again Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(12.dp)
+                )
+                .clickable { onTryAgain() }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Try Again",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun PairingSuccessContent(
+    onConfirm: () -> Unit
+) {
+    var isVisible by remember { mutableStateOf(false) }
+    var showSuccessText by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        isVisible = true
+        kotlinx.coroutines.delay(300)
+        showSuccessText = true
+    }
+    
+    Column(
+        modifier = Modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Animated success title
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = fadeIn(tween(600)) + scaleIn(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
+        ) {
+            Text(
+                text = "Pairing Successful!",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                ),
+                textAlign = TextAlign.Center
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Animated success message
+        AnimatedVisibility(
+            visible = showSuccessText,
+            enter = fadeIn(tween(600)) + slideInVertically(
+                animationSpec = tween(600),
+                initialOffsetY = { it / 4 }
+            )
+        ) {
+            Text(
+                text = "Congratulations! Now you are registered as the last user of this Rideguard",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Black,
+                textAlign = TextAlign.Center
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
+        // Confirm Button
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(12.dp)
+                )
+                .clickable { onConfirm() }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Confirm",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = Color.White
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun TrafficAccidentDialog(
+    onDismiss: () -> Unit,
+    onAccidentCardCreated: () -> Unit = {}
+) {
+    var dialogState by remember { mutableStateOf(TrafficAccidentDialogState.ACCIDENT_DETECTED) }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Dialog Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 32.dp)
+                    .clickable(enabled = false) { }, // Prevent click through
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            ) {
+                when (dialogState) {
+                    TrafficAccidentDialogState.ACCIDENT_DETECTED -> {
+                        AccidentDetectedContent(
+                            onCheckLocation = { 
+                                dialogState = TrafficAccidentDialogState.LOCATION_VIEW 
+                            },
+                            onCallEmergency = { 
+                                dialogState = TrafficAccidentDialogState.EMERGENCY_SERVICES_CALLED 
+                            },
+                            onClose = {
+                                onAccidentCardCreated()
+                                onDismiss()
+                            }
+                        )
+                    }
+                    TrafficAccidentDialogState.LOCATION_VIEW -> {
+                        LocationViewContent(
+                            onCallEmergency = { 
+                                dialogState = TrafficAccidentDialogState.EMERGENCY_SERVICES_CALLED 
+                            },
+                            onClose = {
+                                onAccidentCardCreated()
+                                onDismiss()
+                            }
+                        )
+                    }
+                    TrafficAccidentDialogState.EMERGENCY_SERVICES_CALLED -> {
+                        EmergencyServicesCalledContent(
+                            onClose = {
+                                onAccidentCardCreated()
+                                onDismiss()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun BlackBoxDeviceCard(
     deviceName: String,
     isOnline: Boolean,
-    onToggleStatus: () -> Unit
+    onToggleStatus: () -> Unit,
+    onConnectDevice: () -> Unit = {}
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
+    // Animate card scale based on connection status
+    val scale by animateFloatAsState(
+        targetValue = if (isOnline) 1.02f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
         ),
-        shape = RoundedCornerShape(16.dp)
+        label = "cardScale"
+    )
+    
+    // Animate card color transition
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isOnline) 1f else 0.8f,
+        animationSpec = tween(300),
+        label = "cardAlpha"
+    )
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggleStatus() }
+            .padding(2.dp), // Extra padding for scale animation
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = animatedAlpha)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isOnline) 8.dp else 4.dp
+        )
     ) {
         Row(
             modifier = Modifier
@@ -623,45 +1262,59 @@ private fun BlackBoxDeviceCard(
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Device Icon
-            Box(
-                modifier = Modifier
-                    .size(60.dp)
-                    .background(
-                        Color.White.copy(alpha = 0.2f),
-                        RoundedCornerShape(8.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                BodyText(
-                    text = "📱",
-                    color = Color.White
-                )
-            }
+            // Device Icon with pulse animation
+            val iconScale by animateFloatAsState(
+                targetValue = if (isOnline) 1.1f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "iconScale"
+            )
+            
+            // Custom device icon - no background rectangle
+            Icon(
+                painter = painterResource(id = R.drawable.box),
+                contentDescription = "RideGuard Device", 
+                tint = Color.White,
+                modifier = Modifier.size(40.dp)
+            )
             
             Spacer(modifier = Modifier.width(16.dp))
             
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                BodyText(
-                    text = deviceName,
-                    color = Color.White
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                BodyText(
-                    text = "Status: ${if (isOnline) "Online" else "Offline"}",
-                    color = Color.White.copy(alpha = 0.9f)
-                )
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(tween(300)),
+                    exit = fadeOut(tween(300))
+                ) {
+                    Column {
+                        Text(
+                            text = if (deviceName == "No Device Connected") "No Device Connected" else deviceName,
+                            color = Color.White,
+                            fontWeight = if (deviceName == "No Device Connected") FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = if (deviceName == "No Device Connected") FontWeight.Bold else FontWeight.Normal
+                            )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        BodyText(
+                            text = "Status: ${if (isOnline) "Online" else "Not connected"}",
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun RideGuardDetailsSection(
+fun RideGuardDetailsSection(
     onPulsaBalanceClick: () -> Unit = {}
 ) {
     Column {
@@ -743,7 +1396,7 @@ private fun RideGuardDetailsSection(
 }
 
 @Composable
-private fun StorageSettingsSection(
+fun StorageSettingsSection(
     deletionRate: String,
     onDeletionRateChange: (String) -> Unit
 ) {
@@ -804,10 +1457,24 @@ private fun StorageSettingsSection(
 }
 
 @Composable
-private fun EmergencyContactsSection(
+fun EmergencyContactsSection(
     onAddMoreUsers: () -> Unit = {}
 ) {
-    Column {
+    var isVisible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(200) // Small delay for staggered appearance
+        isVisible = true
+    }
+    
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(tween(500)) + slideInVertically(
+            animationSpec = tween(500),
+            initialOffsetY = { it / 6 }
+        )
+    ) {
+        Column {
         SectionHeader(
             text = "Emergency Contacts",
             color = MaterialTheme.colorScheme.onBackground
@@ -843,11 +1510,12 @@ private fun EmergencyContactsSection(
             onClick = onAddMoreUsers,
             modifier = Modifier.fillMaxWidth()
         )
+        }
     }
 }
 
 @Composable
-private fun EmergencyContactItem(
+fun EmergencyContactItem(
     name: String,
     role: String
 ) {
