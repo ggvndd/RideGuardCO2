@@ -47,13 +47,12 @@ fun BottomNavigationBar(
 ) {
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 20.dp) // Add bottom padding to move navbar up
+            .fillMaxWidth() // Remove bottom padding from outer Box
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp) // Increased height to compensate for padding
+                .height(100.dp) // Keep increased height
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
                 .background(
                     brush = Brush.verticalGradient(
@@ -70,7 +69,8 @@ fun BottomNavigationBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .padding(top = 20.dp), // Move content up by adding top padding to Row
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 bottomNavItems.forEach { item ->

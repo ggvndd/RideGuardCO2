@@ -64,6 +64,12 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// Data class for emergency contact
+data class EmergencyContact(
+    val name: String,
+    val role: String
+)
+
 // Enum for dialog states
 enum class AddMemberDialogState {
     SEARCH_INPUT,
@@ -92,6 +98,17 @@ fun BlackboxScreen(
     var deviceName by remember { mutableStateOf("No Device Connected") }
     var isVisible by remember { mutableStateOf(false) }
     
+    // Emergency contacts state
+    var emergencyContacts by remember { 
+        mutableStateOf(
+            listOf(
+                EmergencyContact("John Doe", "Family Leader"),
+                EmergencyContact("Jonathan Joestar", "Family Member"),
+                EmergencyContact("Mike Shinoda", "Family Member")
+            )
+        ) 
+    }
+    
     // Trigger visibility animation on composition
     LaunchedEffect(Unit) {
         isVisible = true
@@ -114,7 +131,7 @@ fun BlackboxScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
             item {
-                Spacer(modifier = Modifier.height(32.dp)) // Increased spacing from top
+                Spacer(modifier = Modifier.height(48.dp)) // Increased spacing from top more
                 
                 // Header
                 MainHeader(
@@ -186,6 +203,7 @@ fun BlackboxScreen(
             item {
                 // Emergency Contacts
                 EmergencyContactsSection(
+                    emergencyContacts = emergencyContacts,
                     onAddMoreUsers = { showAddMemberDialog = true },
                     isDeviceConnected = isDeviceOnline
                 )
@@ -208,7 +226,10 @@ fun BlackboxScreen(
             )
         ) {
             AddFamilyMemberDialog(
-                onDismiss = { showAddMemberDialog = false }
+                onDismiss = { showAddMemberDialog = false },
+                onMemberAdded = { memberName ->
+                    emergencyContacts = emergencyContacts + EmergencyContact(memberName, "Family Member")
+                }
             )
         }
         
@@ -235,7 +256,8 @@ fun BlackboxScreen(
 
 @Composable
 fun AddFamilyMemberDialog(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onMemberAdded: (String) -> Unit
 ) {
     var dialogState by remember { mutableStateOf(AddMemberDialogState.SEARCH_INPUT) }
     var searchText by remember { mutableStateOf("") }
@@ -302,7 +324,10 @@ fun AddFamilyMemberDialog(
                     AddMemberDialogState.MEMBER_ADDED -> {
                         MemberAddedContent(
                             personName = foundPersonName,
-                            onConfirm = onDismiss
+                            onConfirm = {
+                                onMemberAdded(foundPersonName)
+                                onDismiss()
+                            }
                         )
                     }
                 }
@@ -1305,22 +1330,13 @@ fun RideGuardDetailsSection(
                 modifier = Modifier.weight(1f, false)
             )
             Text(
-                text = "Rp5000,00",
+                text = "Check Here",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.primary,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier.clickable { onPulsaBalanceClick() }
             )
         }
-        
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        // Refresh Data Button
-        PrimaryButton(
-            text = "Refresh Data",
-            onClick = { /* Handle refresh */ },
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
@@ -1387,6 +1403,7 @@ fun StorageSettingsSection(
 
 @Composable
 fun EmergencyContactsSection(
+    emergencyContacts: List<EmergencyContact>,
     onAddMoreUsers: () -> Unit = {},
     isDeviceConnected: Boolean = false
 ) {
@@ -1415,25 +1432,17 @@ fun EmergencyContactsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Contact Items
-        EmergencyContactItem(
-            name = "John Doe",
-            role = "Family Leader"
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        EmergencyContactItem(
-            name = "Jonathan Joestar",
-            role = "Family Member"
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        EmergencyContactItem(
-            name = "Mike Shinoda",
-            role = "Family Member"
-        )
+        // Contact Items - Dynamic list
+        emergencyContacts.forEach { contact ->
+            EmergencyContactItem(
+                name = contact.name,
+                role = contact.role
+            )
+            
+            if (contact != emergencyContacts.last()) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -1506,7 +1515,7 @@ fun EmergencyContactItem(
         
         Text(
             text = role,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )
     }
@@ -1524,6 +1533,9 @@ fun BlackboxScreenPreview() {
 @Composable
 fun AddFamilyMemberDialogPreview() {
     MyAppTheme {
-        AddFamilyMemberDialog(onDismiss = {})
+        AddFamilyMemberDialog(
+            onDismiss = {},
+            onMemberAdded = {}
+        )
     }
 }

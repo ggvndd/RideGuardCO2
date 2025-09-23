@@ -78,7 +78,7 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(32.dp)) // Increased spacing from top
+            Spacer(modifier = Modifier.height(48.dp)) // Increased spacing from top more
             
             // Header - Changed color to Blue80
             MainHeader(

@@ -98,6 +98,18 @@ fun PulsaBalanceScreen(
             }
             
             item {
+                // Check Pulsa Amount Button
+                PrimaryButton(
+                    text = "Check Pulsa Amount",
+                    onClick = { 
+                        // TODO: Add logic to check pulsa amount
+                        // This could trigger an API call or show current balance
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            
+            item {
                 // Instructions Section
                 HowToFillSection()
             }
@@ -142,26 +154,6 @@ private fun PulsaBalanceCard(
                 text = phoneNumber,
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Balance
-            Text(
-                text = balance,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Expiry Date
-            Text(
-                text = "Expired Date: $expiryDate",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center
             )
         }
