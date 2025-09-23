@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // Enum for dialog states
 enum class AddMemberDialogState {
@@ -184,12 +186,13 @@ fun BlackboxScreen(
             item {
                 // Emergency Contacts
                 EmergencyContactsSection(
-                    onAddMoreUsers = { showAddMemberDialog = true }
+                    onAddMoreUsers = { showAddMemberDialog = true },
+                    isDeviceConnected = isDeviceOnline
                 )
             }
             
             item {
-                Spacer(modifier = Modifier.height(80.dp)) // Space for bottom nav
+                Spacer(modifier = Modifier.height(40.dp)) // Space for bottom nav
             }
         }
         }
@@ -1384,9 +1387,13 @@ fun StorageSettingsSection(
 
 @Composable
 fun EmergencyContactsSection(
-    onAddMoreUsers: () -> Unit = {}
+    onAddMoreUsers: () -> Unit = {},
+    isDeviceConnected: Boolean = false
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var isSyncing by remember { mutableStateOf(false) }
+    var syncResult by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(200) // Small delay for staggered appearance
@@ -1436,6 +1443,47 @@ fun EmergencyContactsSection(
             onClick = onAddMoreUsers,
             modifier = Modifier.fillMaxWidth()
         )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Sync Contact Data Button
+        SecondaryButton(
+            text = if (isSyncing) "Syncing..." else "Sync Contact Data",
+            onClick = {
+                if (!isSyncing && isDeviceConnected) {
+                    isSyncing = true
+                    syncResult = null
+                    // Simulate sync operation
+                    coroutineScope.launch {
+                        delay(2000) // Simulate network delay
+                        // Random success/failure for demo
+                        syncResult = if (kotlin.random.Random.nextBoolean()) {
+                            "Refresh Success"
+                        } else {
+                            "Sync failed - Connection timeout"
+                        }
+                        isSyncing = false
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isDeviceConnected && !isSyncing
+        )
+        
+        // Sync result message
+        syncResult?.let { result ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = result,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (result.startsWith("Refresh Success")) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         }
     }
 }

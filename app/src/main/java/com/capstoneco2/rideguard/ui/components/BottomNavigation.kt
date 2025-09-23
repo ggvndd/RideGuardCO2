@@ -48,18 +48,20 @@ fun BottomNavigationBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .padding(bottom = 20.dp) // Add bottom padding to move navbar up
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
+                .height(100.dp) // Increased height to compensate for padding
                 .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             Color(0xFF2C2C2C),
                             Color(0xFF1A1A1A),
-                            Color(0xFF000000)
+                            Color(0xFF000000),
+                            Color(0xFF000000) // Extended black at the bottom
                         )
                     )
                 )
