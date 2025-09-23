@@ -6,18 +6,8 @@ import com.google.gson.annotations.SerializedName
  * Data class for sending accident reports to the API
  */
 data class AccidentReportRequest(
-    @SerializedName("accident_id")
-    val accidentId: String,
-    @SerializedName("location")
-    val location: LocationData,
-    @SerializedName("timestamp")
-    val timestamp: String,
-    @SerializedName("severity")
-    val severity: String,
-    @SerializedName("vehicle_info")
-    val vehicleInfo: VehicleInfo,
-    @SerializedName("emergency_contacted")
-    val emergencyContacted: Boolean
+    @SerializedName("phone_number")
+    val phoneNumber: String
 )
 
 /**

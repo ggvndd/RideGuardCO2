@@ -2,8 +2,6 @@ package com.capstoneco2.rideguard.network
 
 import com.capstoneco2.rideguard.data.models.AccidentReportRequest
 import com.capstoneco2.rideguard.data.models.AccidentReportResponse
-import com.capstoneco2.rideguard.data.models.LocationData
-import com.capstoneco2.rideguard.data.models.VehicleInfo
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -12,7 +10,6 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -76,13 +73,10 @@ class NetworkRepository {
     /**
      * Test API connectivity with sample data
      */
-    suspend fun testApiConnection(): Result<Map<String, Any>> {
+    suspend fun testApiConnection(phoneNumber: String = "+1-555-987-6543"): Result<Map<String, Any>> {
         return try {
             val testData = mapOf(
-                "message" to "Test connection from RideGuard app",
-                "timestamp" to LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                "app_version" to "1.0.0",
-                "device_type" to "Android"
+                "phone_number" to phoneNumber.ifBlank { "+1-555-987-6543" }
             )
             
             val response = apiService.testEndpoint(testData)
@@ -101,23 +95,9 @@ class NetworkRepository {
     /**
      * Create a sample accident report for testing
      */
-    fun createSampleAccidentReport(): AccidentReportRequest {
+    fun createSampleAccidentReport(phoneNumber: String = "+1-555-123-4567"): AccidentReportRequest {
         return AccidentReportRequest(
-            accidentId = UUID.randomUUID().toString(),
-            location = LocationData(
-                latitude = 37.7749,
-                longitude = -122.4194,
-                address = "123 Main Street, San Francisco, CA 94102"
-            ),
-            timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-            severity = "MODERATE",
-            vehicleInfo = VehicleInfo(
-                make = "Toyota",
-                model = "Camry",
-                year = 2022,
-                licensePlate = "ABC123"
-            ),
-            emergencyContacted = false
+            phoneNumber = phoneNumber.ifBlank { "+1-555-123-4567" }
         )
     }
 }

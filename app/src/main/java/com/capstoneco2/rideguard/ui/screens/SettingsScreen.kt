@@ -20,7 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,6 +65,7 @@ fun SettingsScreen(
     var showDropdown by remember { mutableStateOf(false) }
     var apiTestResult by remember { mutableStateOf<String?>(null) }
     var isApiTesting by remember { mutableStateOf(false) }
+    var phoneNumber by remember { mutableStateOf("") }
     
     val coroutineScope = rememberCoroutineScope()
     val networkRepository = remember { NetworkRepository.getInstance() }
@@ -213,7 +217,7 @@ fun SettingsScreen(
                         apiTestResult = null
                         coroutineScope.launch {
                             try {
-                                val result = networkRepository.testApiConnection()
+                                val result = networkRepository.testApiConnection(phoneNumber)
                                 apiTestResult = if (result.isSuccess) {
                                     "✅ API Connection Successful!"
                                 } else {
@@ -240,6 +244,31 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Phone Number Input Field
+            OutlinedTextField(
+                value = phoneNumber,
+                onValueChange = { phoneNumber = it },
+                label = { 
+                    Text(
+                        "Phone Number",
+                        style = MaterialTheme.typography.bodyMedium
+                    ) 
+                },
+                placeholder = { 
+                    Text(
+                        "+1-555-123-4567",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    ) 
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
             // Submit Accident Report Button
             SecondaryButton(
                 text = if (isApiTesting) "Submitting..." else "Submit Test Accident Report",
@@ -249,7 +278,7 @@ fun SettingsScreen(
                         apiTestResult = null
                         coroutineScope.launch {
                             try {
-                                val sampleReport = networkRepository.createSampleAccidentReport()
+                                val sampleReport = networkRepository.createSampleAccidentReport(phoneNumber)
                                 val result = networkRepository.submitAccidentReport(sampleReport)
                                 apiTestResult = if (result.isSuccess) {
                                     "✅ Accident Report Submitted Successfully!"
