@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,6 +47,8 @@ import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
+import com.capstoneco2.rideguard.network.NetworkRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -57,6 +60,11 @@ fun SettingsScreen(
     var notificationsEnabled by remember { mutableStateOf(true) }
     var selectedInterval by remember { mutableStateOf("60 Seconds") }
     var showDropdown by remember { mutableStateOf(false) }
+    var apiTestResult by remember { mutableStateOf<String?>(null) }
+    var isApiTesting by remember { mutableStateOf(false) }
+    
+    val coroutineScope = rememberCoroutineScope()
+    val networkRepository = remember { NetworkRepository.getInstance() }
 
     LazyColumn(
         modifier = Modifier
@@ -193,6 +201,93 @@ fun SettingsScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Test API Button
+            PrimaryButton(
+                text = if (isApiTesting) "Testing API..." else "Test API Connection",
+                onClick = {
+                    if (!isApiTesting) {
+                        isApiTesting = true
+                        apiTestResult = null
+                        coroutineScope.launch {
+                            try {
+                                val result = networkRepository.testApiConnection()
+                                apiTestResult = if (result.isSuccess) {
+                                    "✅ API Connection Successful!"
+                                } else {
+                                    "❌ API Connection Failed: ${result.exceptionOrNull()?.message}"
+                                }
+                            } catch (e: Exception) {
+                                apiTestResult = "❌ Error: ${e.message}"
+                            } finally {
+                                isApiTesting = false
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isApiTesting
+            )
+            
+            BodyText(
+                text = "Test POST request to API endpoint with JSON data.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Submit Accident Report Button
+            SecondaryButton(
+                text = if (isApiTesting) "Submitting..." else "Submit Test Accident Report",
+                onClick = {
+                    if (!isApiTesting) {
+                        isApiTesting = true
+                        apiTestResult = null
+                        coroutineScope.launch {
+                            try {
+                                val sampleReport = networkRepository.createSampleAccidentReport()
+                                val result = networkRepository.submitAccidentReport(sampleReport)
+                                apiTestResult = if (result.isSuccess) {
+                                    "✅ Accident Report Submitted Successfully!"
+                                } else {
+                                    "❌ Submit Failed: ${result.exceptionOrNull()?.message}"
+                                }
+                            } catch (e: Exception) {
+                                apiTestResult = "❌ Error: ${e.message}"
+                            } finally {
+                                isApiTesting = false
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isApiTesting
+            )
+            
+            BodyText(
+                text = "Submit a sample accident report with JSON payload to the API.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            // Display API test result
+            apiTestResult?.let { result ->
+                Spacer(modifier = Modifier.height(12.dp))
+                BodyText(
+                    text = result,
+                    color = if (result.startsWith("✅")) 
+                        MaterialTheme.colorScheme.primary 
+                    else 
+                        MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
         
         item {
