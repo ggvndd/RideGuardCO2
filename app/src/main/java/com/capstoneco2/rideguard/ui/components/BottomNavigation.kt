@@ -21,22 +21,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Info
 
 // Navigation items data
 data class BottomNavItem(
     val title: String,
-    val icon: String, // Using emoji for now, can replace with proper icons later
+    val icon: ImageVector, // Material Design icon
     val route: String
 )
 
-// Define the navigation items
+// Define the navigation items - using Material Design icons
 val bottomNavItems = listOf(
-    BottomNavItem("Home", "🏠", "home"),
-    BottomNavItem("Blackbox", "📊", "blackbox"),
-    BottomNavItem("Tutorial", "📚", "tutorial"),
-    BottomNavItem("Settings", "⚙️", "settings")
+    BottomNavItem("Home", Icons.Filled.Home, "home"),
+    BottomNavItem("RideGuard", Icons.Filled.AccountCircle, "blackbox"),
+    BottomNavItem("Tutorial", Icons.Filled.Info, "tutorial"),
+    BottomNavItem("Settings", Icons.Filled.Settings, "settings")
 )
 
 @Composable
@@ -79,11 +85,10 @@ fun BottomNavigationBar(
                     
                     NavigationBarItem(
                         icon = {
-                            Text(
-                                text = item.icon,
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontSize = MaterialTheme.typography.titleLarge.fontSize * if (isSelected) 1.3f else 1.1f
-                                )
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.title,
+                                modifier = Modifier.size(if (isSelected) 28.dp else 24.dp)
                             )
                         },
                         label = {
@@ -99,8 +104,8 @@ fun BottomNavigationBar(
                         onClick = { onNavigate(item.route) },
                         modifier = Modifier.weight(weight),
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
                             unselectedIconColor = Color.White.copy(alpha = 0.6f),
                             unselectedTextColor = Color.White.copy(alpha = 0.6f),
                             indicatorColor = Color.Transparent

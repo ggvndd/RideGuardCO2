@@ -25,6 +25,17 @@ fun MainApp(username: String) {
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
     var showAccidentDialog by remember { mutableStateOf(false) }
+    
+    // Shared emergency contacts state
+    var emergencyContacts by remember { 
+        mutableStateOf(
+            listOf(
+                EmergencyContact("John Doe", "Family Leader"),
+                EmergencyContact("Jonathan Joestar", "Family Member"),
+                EmergencyContact("Mike Shinoda", "Family Member")
+            )
+        ) 
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -58,6 +69,7 @@ fun MainApp(username: String) {
                         when (tabIndex) {
                             0 -> HomeScreen(
                                 userName = username,
+                                emergencyContacts = emergencyContacts,
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true },
                                 onNavigateToBlackbox = { 
                                     showPulsaBalanceScreen = false
@@ -67,6 +79,10 @@ fun MainApp(username: String) {
                                 onShowAccidentDialog = { showAccidentDialog = true }
                             )
                             1 -> BlackboxScreen(
+                                emergencyContacts = emergencyContacts,
+                                onEmergencyContactsChange = { newContacts ->
+                                    emergencyContacts = newContacts
+                                },
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true }
                             )
                             2 -> TutorialScreen()

@@ -88,6 +88,8 @@ enum class BlackboxPairingState {
 
 @Composable
 fun BlackboxScreen(
+    emergencyContacts: List<EmergencyContact> = listOf(),
+    onEmergencyContactsChange: (List<EmergencyContact>) -> Unit = {},
     onNavigateToPulsaBalance: () -> Unit = {}
 ) {
     var isDeviceOnline by remember { mutableStateOf(false) } // Changed to false by default
@@ -97,17 +99,6 @@ fun BlackboxScreen(
     var showPairingDialog by remember { mutableStateOf(false) }
     var deviceName by remember { mutableStateOf("No Device Connected") }
     var isVisible by remember { mutableStateOf(false) }
-    
-    // Emergency contacts state
-    var emergencyContacts by remember { 
-        mutableStateOf(
-            listOf(
-                EmergencyContact("John Doe", "Family Leader"),
-                EmergencyContact("Jonathan Joestar", "Family Member"),
-                EmergencyContact("Mike Shinoda", "Family Member")
-            )
-        ) 
-    }
     
     // Trigger visibility animation on composition
     LaunchedEffect(Unit) {
@@ -228,7 +219,7 @@ fun BlackboxScreen(
             AddFamilyMemberDialog(
                 onDismiss = { showAddMemberDialog = false },
                 onMemberAdded = { memberName ->
-                    emergencyContacts = emergencyContacts + EmergencyContact(memberName, "Family Member")
+                    onEmergencyContactsChange(emergencyContacts + EmergencyContact(memberName, "Family Member"))
                 }
             )
         }
@@ -1514,7 +1505,7 @@ fun EmergencyContactItem(
         )
         
         Text(
-            text = role,
+            text = if (role == "Family Leader") "$role (You)" else role,
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )

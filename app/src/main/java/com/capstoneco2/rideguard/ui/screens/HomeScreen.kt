@@ -48,6 +48,7 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 @Composable
 fun HomeScreen(
     userName: String = "User",
+    emergencyContacts: List<EmergencyContact> = listOf(),
     onNavigateToPulsaBalance: () -> Unit = {},
     onNavigateToBlackbox: () -> Unit = {},
     showAccidentCard: Boolean = false,
@@ -146,6 +147,7 @@ fun HomeScreen(
         item {
             // Emergency Contacts Section
             HomeEmergencyContactsSection(
+                emergencyContacts = emergencyContacts,
                 onAddAnotherClick = onNavigateToBlackbox
             )
         }
@@ -337,6 +339,7 @@ private fun PulsaBalanceSection(
 
 @Composable
 private fun HomeEmergencyContactsSection(
+    emergencyContacts: List<EmergencyContact>,
     onAddAnotherClick: () -> Unit
 ) {
     Column {
@@ -360,11 +363,10 @@ private fun HomeEmergencyContactsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Emergency Contact Chips in Grid (2x2)
-        val contacts = listOf(
-            "John Doe", "Lorem Ipsum",
-            "Jonathan Joestar", "John Doe"
-        )
+        // Emergency Contact Chips in Grid (2x2) - Exclude Family Leader (the user)
+        val contacts = emergencyContacts
+            .filter { it.role != "Family Leader" }
+            .map { it.name }
         
         val contactRows = contacts.chunked(2)
         
@@ -488,6 +490,12 @@ private fun TrafficAccidentCard(
 @Composable
 fun HomeScreenDarkPreview() {
     MyAppTheme(darkTheme = true) {
-        HomeScreen("John Doe")
+        HomeScreen(
+            userName = "John Doe",
+            emergencyContacts = listOf(
+                EmergencyContact("John Doe", "Family Leader"),
+                EmergencyContact("Jonathan Joestar", "Family Member")
+            )
+        )
     }
 }
