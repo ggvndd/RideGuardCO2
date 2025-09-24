@@ -16,12 +16,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.ui.screens.SignInPage
 import com.capstoneco2.rideguard.ui.screens.SignUpPage
 import com.capstoneco2.rideguard.ui.screens.WelcomePage
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 
 enum class AppScreen {
     WELCOME,
@@ -29,11 +32,6 @@ enum class AppScreen {
     SIGN_IN,
     MAIN_APP
 }
-
-data class UserData(
-    val username: String = "",
-    val email: String = ""
-)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +43,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    RideGuardApp()
+                    MyApp()
                 }
             }
         }
@@ -53,9 +51,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun RideGuardApp() {
+fun MyApp() {
     var currentScreen by remember { mutableStateOf(AppScreen.WELCOME) }
-    var userData by remember { mutableStateOf(UserData()) }
+    val authViewModel: AuthViewModel = viewModel()
+    val authState by authViewModel.authState.collectAsState()
     
     AnimatedContent(
         targetState = currentScreen,
@@ -86,35 +85,24 @@ fun RideGuardApp() {
             
             AppScreen.SIGN_UP -> {
                 SignUpPage(
-                    onSignUpClick = { username, phone, email, password, confirmPassword ->
-                        // Handle sign up logic here
-                        // For now, simulate successful sign up and navigate to main app
-                        userData = UserData(username = username, email = email)
+                    onSignUpSuccess = {
+                        // Firebase auth success - navigate to main app
                         currentScreen = AppScreen.MAIN_APP
-                        
-                        // In a real app, you'd call your authentication API here
-                        println("Sign Up successful for:")
-                        println("Username: $username")
-                        println("Phone: $phone")
-                        println("Email: $email")
+                        println("Sign Up successful with Firebase")
                     },
                     onSignInClick = {
                         currentScreen = AppScreen.SIGN_IN
-                    }
+                    },
+                    authViewModel = authViewModel
                 )
             }
             
             AppScreen.SIGN_IN -> {
                 SignInPage(
-                    onSignInClick = { username, password ->
-                        // Handle sign in logic here
-                        // For now, simulate successful sign in and navigate to main app
-                        userData = UserData(username = username, email = "$username@example.com")
+                    onSignInSuccess = {
+                        // Firebase auth success - navigate to main app
                         currentScreen = AppScreen.MAIN_APP
-                        
-                        // In a real app, you'd call your authentication API here
-                        println("Sign In successful for:")
-                        println("Username: $username")
+                        println("Sign In successful with Firebase")
                     },
                     onSignUpClick = {
                         currentScreen = AppScreen.SIGN_UP
@@ -122,12 +110,13 @@ fun RideGuardApp() {
                     onForgotPasswordClick = {
                         // Handle forgot password logic
                         println("Forgot password clicked")
-                    }
+                    },
+                    authViewModel = authViewModel
                 )
             }
             
             AppScreen.MAIN_APP -> {
-                MainApp(username = userData.username)
+                MainApp(username = authState.userProfile?.username ?: "User")
             }
         }
     }

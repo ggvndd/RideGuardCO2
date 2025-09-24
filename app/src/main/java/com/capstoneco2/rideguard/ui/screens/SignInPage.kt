@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,11 +30,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,14 +61,32 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
 fun SignInPage(
-    onSignInClick: (String, String) -> Unit,
+    onSignInSuccess: () -> Unit,
     onSignUpClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit = {}
+    onForgotPasswordClick: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel()
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Navigate to main app when sign in is successful
+    LaunchedEffect(authState.isSignedIn) {
+        if (authState.isSignedIn) {
+            onSignInSuccess()
+        }
+    }
+    
+    // Show Firebase errors
+    LaunchedEffect(authState.error) {
+        if (authState.error != null) {
+            errorMessage = authState.error!!
+            authViewModel.clearError()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -208,20 +233,42 @@ fun SignInPage(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        // Sign In Button - Changed to "Login" to match mockup
-        PrimaryButton(
-            text = "Login",
-            onClick = {
-                when {
-                    username.isEmpty() -> errorMessage = "Email is required"
-                    password.isEmpty() -> errorMessage = "Password is required"
-                    else -> {
-                        onSignInClick(username, password)
+        // Sign In Button with loading state
+        if (authState.isLoading) {
+            // Show loading button
+            androidx.compose.material3.Button(
+                onClick = { },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                enabled = false,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        } else {
+            // Show normal login button
+            PrimaryButton(
+                text = "Login",
+                onClick = {
+                    when {
+                        username.isEmpty() -> errorMessage = "Email is required"
+                        password.isEmpty() -> errorMessage = "Password is required"
+                        else -> {
+                            authViewModel.signIn(username, password)
+                        }
                     }
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         
         // Sign Up Link - Updated to match mockup with interactive state
         Row(
@@ -256,7 +303,7 @@ fun SignInPage(
 fun SignInPagePreview() {
     MyAppTheme {
         SignInPage(
-            onSignInClick = { _, _ -> },
+            onSignInSuccess = { },
             onSignUpClick = { },
             onForgotPasswordClick = { }
         )
@@ -268,7 +315,7 @@ fun SignInPagePreview() {
 fun SignInPageDarkPreview() {
     MyAppTheme(darkTheme = true) {
         SignInPage(
-            onSignInClick = { _, _ -> },
+            onSignInSuccess = { },
             onSignUpClick = { },
             onForgotPasswordClick = { }
         )

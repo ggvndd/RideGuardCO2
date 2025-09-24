@@ -30,11 +30,16 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,8 +61,9 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable
 fun SignUpPage(
-    onSignUpClick: (String, String, String, String, String) -> Unit,
-    onSignInClick: () -> Unit
+    onSignUpSuccess: () -> Unit,
+    onSignInClick: () -> Unit,
+    authViewModel: AuthViewModel = viewModel()
 ) {
     var username by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
@@ -67,6 +73,23 @@ fun SignUpPage(
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    
+    val authState by authViewModel.authState.collectAsState()
+    
+    // Navigate to main app when sign up is successful
+    LaunchedEffect(authState.isSignedIn) {
+        if (authState.isSignedIn) {
+            onSignUpSuccess()
+        }
+    }
+    
+    // Show Firebase errors
+    LaunchedEffect(authState.error) {
+        if (authState.error != null) {
+            errorMessage = authState.error!!
+            authViewModel.clearError()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -185,6 +208,14 @@ fun SignUpPage(
         
         Spacer(modifier = Modifier.height(32.dp))
         
+        // Loading indicator
+        if (authState.isLoading) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        
         // Sign Up Button
         PrimaryButton(
             text = "Sign Up",
@@ -199,11 +230,13 @@ fun SignUpPage(
                     password.length < 6 -> errorMessage = "Password must be at least 6 characters"
                     !email.contains("@") -> errorMessage = "Please enter a valid email"
                     else -> {
-                        onSignUpClick(username, phoneNumber, email, password, confirmPassword)
+                        errorMessage = ""
+                        authViewModel.signUp(email, password, username, phoneNumber)
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !authState.isLoading
         )
                 // Sign In Link - Like in mockup with blue text and interactive states
         Row(
@@ -349,7 +382,7 @@ private fun IconPasswordTextField(
 fun SignUpPagePreview() {
     MyAppTheme {
         SignUpPage(
-            onSignUpClick = { _, _, _, _, _ -> },
+            onSignUpSuccess = { },
             onSignInClick = { }
         )
     }
