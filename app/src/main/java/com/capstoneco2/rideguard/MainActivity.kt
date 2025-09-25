@@ -116,7 +116,14 @@ fun MyApp() {
             }
             
             AppScreen.MAIN_APP -> {
-                MainApp(username = authState.userProfile?.username ?: "User")
+                MainApp(
+                    username = authState.userProfile?.username ?: "User",
+                    onLogout = {
+                        // Navigate back to welcome screen after logout
+                        currentScreen = AppScreen.WELCOME
+                    },
+                    authViewModel = authViewModel
+                )
             }
         }
     }

@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,29 +56,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.capstoneco2.rideguard.R
+import com.capstoneco2.rideguard.data.EmergencyContactInfo
+import com.capstoneco2.rideguard.ui.components.AddEmergencyContactDialog
 import com.capstoneco2.rideguard.ui.components.BodyText
 import com.capstoneco2.rideguard.ui.components.MainHeader
 import com.capstoneco2.rideguard.ui.components.PrimaryButton
 import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
+import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-// Data class for emergency contact
-data class EmergencyContact(
-    val name: String,
-    val role: String
-)
-
-// Enum for dialog states
-enum class AddMemberDialogState {
-    SEARCH_INPUT,
-    PERSON_FOUND,
-    PERSON_NOT_FOUND,
-    MEMBER_ADDED
-}
 
 // Enum for blackbox pairing states
 enum class BlackboxPairingState {
@@ -88,10 +81,22 @@ enum class BlackboxPairingState {
 
 @Composable
 fun BlackboxScreen(
-    emergencyContacts: List<EmergencyContact> = listOf(),
-    onEmergencyContactsChange: (List<EmergencyContact>) -> Unit = {},
-    onNavigateToPulsaBalance: () -> Unit = {}
+    onNavigateToPulsaBalance: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel(),
+    emergencyContactViewModel: EmergencyContactViewModel = viewModel()
 ) {
+    // Collect auth and emergency contact states
+    val authState by authViewModel.authState.collectAsState()
+    val emergencyContactState by emergencyContactViewModel.state.collectAsState()
+    
+    var showAddContactDialog by remember { mutableStateOf(false) }
+    
+    // Load emergency contacts when screen loads
+    LaunchedEffect(authState.user) {
+        authState.user?.uid?.let { userId ->
+            emergencyContactViewModel.loadEmergencyContacts(userId)
+        }
+    }
     var isDeviceOnline by remember { mutableStateOf(false) } // Changed to false by default
     var deletionRate by remember { mutableStateOf("3 Hours") }
     var showDeletionDropdown by remember { mutableStateOf(false) }
@@ -194,8 +199,9 @@ fun BlackboxScreen(
             item {
                 // Emergency Contacts
                 EmergencyContactsSection(
-                    emergencyContacts = emergencyContacts,
-                    onAddMoreUsers = { showAddMemberDialog = true },
+                    emergencyContacts = emergencyContactState.contacts,
+                    isLoading = emergencyContactState.isLoading,
+                    onAddMoreUsers = { showAddContactDialog = true },
                     isDeviceConnected = isDeviceOnline
                 )
             }
@@ -206,22 +212,18 @@ fun BlackboxScreen(
         }
         }
         
-        // Add Member Dialog with Animation
-        AnimatedVisibility(
-            visible = showAddMemberDialog,
-            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
-                animationSpec = tween(300, easing = androidx.compose.animation.core.EaseOutBack)
-            ),
-            exit = fadeOut(animationSpec = tween(200)) + scaleOut(
-                animationSpec = tween(200, easing = androidx.compose.animation.core.EaseInBack)
-            )
-        ) {
-            AddFamilyMemberDialog(
-                onDismiss = { showAddMemberDialog = false },
-                onMemberAdded = { memberName ->
-                    onEmergencyContactsChange(emergencyContacts + EmergencyContact(memberName, "Family Member"))
-                }
-            )
+        // Add Emergency Contact Dialog
+        if (showAddContactDialog) {
+            authState.user?.uid?.let { currentUserUid ->
+                AddEmergencyContactDialog(
+                    currentUserUid = currentUserUid,
+                    onDismiss = { showAddContactDialog = false },
+                    onContactAdded = {
+                        // No need to manually reload - ViewModel handles this automatically
+                    },
+                    viewModel = emergencyContactViewModel
+                )
+            }
         }
         
         // Blackbox Pairing Dialog with Animation
@@ -245,451 +247,7 @@ fun BlackboxScreen(
     }
 }
 
-@Composable
-fun AddFamilyMemberDialog(
-    onDismiss: () -> Unit,
-    onMemberAdded: (String) -> Unit
-) {
-    var dialogState by remember { mutableStateOf(AddMemberDialogState.SEARCH_INPUT) }
-    var searchText by remember { mutableStateOf("") }
-    var foundPersonName by remember { mutableStateOf("") }
-    
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            // Dialog Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp)
-                    .clickable(enabled = false) { }, // Prevent click through
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                when (dialogState) {
-                    AddMemberDialogState.SEARCH_INPUT -> {
-                        SearchInputContent(
-                            searchText = searchText,
-                            onSearchTextChange = { searchText = it },
-                            onSearch = {
-                                // Mock search logic
-                                if (searchText.lowercase().contains("rafi") || 
-                                    searchText.lowercase().contains("john doe") ||
-                                    searchText.lowercase().contains("john")) {
-                                    foundPersonName = searchText
-                                    dialogState = AddMemberDialogState.PERSON_FOUND
-                                } else {
-                                    dialogState = AddMemberDialogState.PERSON_NOT_FOUND
-                                }
-                            }
-                        )
-                    }
-                    AddMemberDialogState.PERSON_FOUND -> {
-                        PersonFoundContent(
-                            personName = foundPersonName,
-                            onCancel = { 
-                                searchText = ""
-                                dialogState = AddMemberDialogState.SEARCH_INPUT 
-                            },
-                            onConfirm = { 
-                                dialogState = AddMemberDialogState.MEMBER_ADDED 
-                            }
-                        )
-                    }
-                    AddMemberDialogState.PERSON_NOT_FOUND -> {
-                        PersonNotFoundContent(
-                            onTryAgain = { 
-                                searchText = ""
-                                dialogState = AddMemberDialogState.SEARCH_INPUT 
-                            }
-                        )
-                    }
-                    AddMemberDialogState.MEMBER_ADDED -> {
-                        MemberAddedContent(
-                            personName = foundPersonName,
-                            onConfirm = {
-                                onMemberAdded(foundPersonName)
-                                onDismiss()
-                            }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
-@Composable
-private fun SearchInputContent(
-    searchText: String,
-    onSearchTextChange: (String) -> Unit,
-    onSearch: () -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Adding A Family Member",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            ),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Search Input Field
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                BasicTextField(
-                    value = searchText,
-                    onValueChange = onSearchTextChange,
-                    modifier = Modifier.weight(1f),
-                    textStyle = TextStyle(
-                        color = Color.Black,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { innerTextField ->
-                        if (searchText.isEmpty()) {
-                            Text(
-                                text = "Search Here",
-                                color = Color.Gray,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                        }
-                        innerTextField()
-                    }
-                )
-                
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_search),
-                    contentDescription = "Search",
-                    tint = Color.Gray,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { onSearch() }
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Note: Your contact must have a RideGuard App as well.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Confirm Button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.primary,
-                    RoundedCornerShape(12.dp)
-                )
-                .clickable { onSearch() }
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Confirm",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun PersonFoundContent(
-    personName: String,
-    onCancel: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Adding A Family Member",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            ),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Search Result Field
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = personName,
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    modifier = Modifier.weight(1f)
-                )
-                
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_search),
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Text(
-            text = "Person Found!",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-            color = Color.Black,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Note: Your contact must have a RideGuard App as well.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Cancel Button
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable { onCancel() }
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Cancel",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-            
-            // Confirm Button
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .background(
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(12.dp)
-                    )
-                    .clickable { onConfirm() }
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Confirm",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PersonNotFoundContent(
-    onTryAgain: () -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Adding A Family Member",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            ),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Search Result Field (Empty)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 2.dp,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Search Here",
-                    color = Color.Gray,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f)
-                )
-                
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_search),
-                    contentDescription = "Search",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        Text(
-            text = "Person is not found.",
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.error,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Note: Your contact must have a RideGuard App as well.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Try Again Button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.primary,
-                    RoundedCornerShape(12.dp)
-                )
-                .clickable { onTryAgain() }
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Try Again",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun MemberAddedContent(
-    personName: String,
-    onConfirm: () -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "Family Member Added!",
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            ),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Text(
-            text = "You have added $personName to Your Emergency Contact List",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.Black,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Confirm Button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.primary,
-                    RoundedCornerShape(12.dp)
-                )
-                .clickable { onConfirm() }
-                .padding(vertical = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Confirm",
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = Color.White
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
 
 @Composable
 fun BlackboxPairingDialog(
@@ -1394,7 +952,8 @@ fun StorageSettingsSection(
 
 @Composable
 fun EmergencyContactsSection(
-    emergencyContacts: List<EmergencyContact>,
+    emergencyContacts: List<EmergencyContactInfo>,
+    isLoading: Boolean = false,
     onAddMoreUsers: () -> Unit = {},
     isDeviceConnected: Boolean = false
 ) {
@@ -1423,15 +982,39 @@ fun EmergencyContactsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Contact Items - Dynamic list
-        emergencyContacts.forEach { contact ->
-            EmergencyContactItem(
-                name = contact.name,
-                role = contact.role
-            )
+        // Loading indicator or contact list
+        if (isLoading) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else {
+            // Contact Items - Dynamic list from database
+            emergencyContacts.forEach { contact ->
+                EmergencyContactItem(
+                    name = contact.username,
+                    role = "Emergency Contact"
+                )
+                
+                if (contact != emergencyContacts.last()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
             
-            if (contact != emergencyContacts.last()) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Show message if no contacts
+            if (emergencyContacts.isEmpty()) {
+                Text(
+                    text = "No emergency contacts added yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
         
@@ -1520,13 +1103,4 @@ fun BlackboxScreenPreview() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun AddFamilyMemberDialogPreview() {
-    MyAppTheme {
-        AddFamilyMemberDialog(
-            onDismiss = {},
-            onMemberAdded = {}
-        )
-    }
-}
+

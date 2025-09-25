@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +28,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,19 +48,36 @@ import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.Black80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
+import com.capstoneco2.rideguard.data.EmergencyContactInfo
+import com.capstoneco2.rideguard.ui.components.AddEmergencyContactDialog
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
+import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
 
 @Composable
 fun HomeScreen(
     userName: String = "User",
-    emergencyContacts: List<EmergencyContact> = listOf(),
     onNavigateToPulsaBalance: () -> Unit = {},
     onNavigateToBlackbox: () -> Unit = {},
     showAccidentCard: Boolean = false,
-    onShowAccidentDialog: () -> Unit = {}
+    onShowAccidentDialog: () -> Unit = {},
+    authViewModel: AuthViewModel = viewModel(),
+    emergencyContactViewModel: EmergencyContactViewModel = viewModel()
 ) {
     var isBlackboxOnline by remember { mutableStateOf(true) }
     var batteryLevel by remember { mutableStateOf("100%") }
     var blackboxSerialNumber by remember { mutableStateOf("Lorem Ipsum") }
+    var showAddContactDialog by remember { mutableStateOf(false) }
+    
+    val authState by authViewModel.authState.collectAsState()
+    val emergencyContactState by emergencyContactViewModel.state.collectAsState()
+    val currentUserUid = authState.user?.uid ?: ""
+    
+    // Load emergency contacts when screen loads
+    LaunchedEffect(currentUserUid) {
+        if (currentUserUid.isNotEmpty()) {
+            emergencyContactViewModel.loadEmergencyContacts(currentUserUid)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -147,14 +168,28 @@ fun HomeScreen(
         item {
             // Emergency Contacts Section
             HomeEmergencyContactsSection(
-                emergencyContacts = emergencyContacts,
-                onAddAnotherClick = onNavigateToBlackbox
+                emergencyContacts = emergencyContactState.contacts,
+                onAddAnotherClick = { showAddContactDialog = true },
+                isLoading = emergencyContactState.isLoading
             )
         }
         
         item {
             Spacer(modifier = Modifier.height(100.dp)) // Space for bottom nav
         }
+    }
+    
+    // Add Emergency Contact Dialog
+    if (showAddContactDialog) {
+        AddEmergencyContactDialog(
+            currentUserUid = currentUserUid,
+            onDismiss = { showAddContactDialog = false },
+            onContactAdded = { 
+                showAddContactDialog = false
+                // No need to manually reload - ViewModel handles this automatically
+            },
+            viewModel = emergencyContactViewModel
+        )
     }
 }
 
@@ -339,8 +374,9 @@ private fun PulsaBalanceSection(
 
 @Composable
 private fun HomeEmergencyContactsSection(
-    emergencyContacts: List<EmergencyContact>,
-    onAddAnotherClick: () -> Unit
+    emergencyContacts: List<EmergencyContactInfo>,
+    onAddAnotherClick: () -> Unit,
+    isLoading: Boolean = false
 ) {
     Column {
         Row(
@@ -363,31 +399,47 @@ private fun HomeEmergencyContactsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Emergency Contact Chips in Grid (2x2) - Exclude Family Leader (the user)
-        val contacts = emergencyContacts
-            .filter { it.role != "Family Leader" }
-            .map { it.name }
-        
-        val contactRows = contacts.chunked(2)
-        
-        contactRows.forEach { rowContacts ->
+        if (isLoading) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
-                rowContacts.forEach { contact ->
-                    EmergencyContactChip(
-                        name = contact,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                // Fill remaining space if odd number of contacts
-                if (rowContacts.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Loading emergency contacts...")
             }
-            if (rowContacts != contactRows.last()) {
-                Spacer(modifier = Modifier.height(12.dp))
+        } else if (emergencyContacts.isEmpty()) {
+            Text(
+                text = "No emergency contacts added yet. Tap 'Add Another' to add your first contact.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            // Emergency Contact Chips in Grid (2x2)
+            val contactUsernames = emergencyContacts.map { it.username }
+            val contactRows = contactUsernames.chunked(2)
+        
+            contactRows.forEach { rowContacts ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rowContacts.forEach { contact ->
+                        EmergencyContactChip(
+                            name = contact,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Fill remaining space if odd number of contacts
+                    if (rowContacts.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+                if (rowContacts != contactRows.last()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
         }
     }
@@ -491,11 +543,7 @@ private fun TrafficAccidentCard(
 fun HomeScreenDarkPreview() {
     MyAppTheme(darkTheme = true) {
         HomeScreen(
-            userName = "John Doe",
-            emergencyContacts = listOf(
-                EmergencyContact("John Doe", "Family Leader"),
-                EmergencyContact("Jonathan Joestar", "Family Member")
-            )
+            userName = "John Doe"
         )
     }
 }

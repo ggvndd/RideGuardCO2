@@ -32,6 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,15 +52,15 @@ import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.network.NetworkRepository
 import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
-    userName: String = "John Doe",
-    userEmail: String = "john.doe@example.com",
-    onSignOutClick: () -> Unit = { },
-    onShowAccidentDialog: () -> Unit = { }
+    onShowAccidentDialog: () -> Unit = { },
+    onLogoutSuccess: () -> Unit = { },
+    authViewModel: AuthViewModel = viewModel()
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
     var selectedInterval by remember { mutableStateOf("60 Seconds") }
@@ -69,6 +71,11 @@ fun SettingsScreen(
     
     val coroutineScope = rememberCoroutineScope()
     val networkRepository = remember { NetworkRepository.getInstance() }
+    
+    // Get auth state and user profile
+    val authState by authViewModel.authState.collectAsState()
+    val userName = authState.userProfile?.username ?: "User"
+    val userEmail = authState.userProfile?.email ?: "user@example.com"
 
     LazyColumn(
         modifier = Modifier
@@ -93,7 +100,10 @@ fun SettingsScreen(
             UserProfileCard(
                 userName = userName,
                 onEditClick = { /* Handle edit profile */ },
-                onSignOutClick = onSignOutClick
+                onSignOutClick = {
+                    authViewModel.signOut()
+                    onLogoutSuccess()
+                }
             )
         }
         

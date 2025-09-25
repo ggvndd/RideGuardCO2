@@ -15,27 +15,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.capstoneco2.rideguard.ui.components.BottomNavigationBar
 import com.capstoneco2.rideguard.ui.components.TrafficAccidentDialog
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
+import com.capstoneco2.rideguard.viewmodel.AuthViewModel
+import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
 
 @Composable
-fun MainApp(username: String) {
+fun MainApp(
+    username: String,
+    onLogout: () -> Unit = { },
+    authViewModel: AuthViewModel = viewModel()
+) {
+    // Create shared ViewModels at MainApp level
+    val emergencyContactViewModel: EmergencyContactViewModel = viewModel()
     var selectedTab by remember { mutableStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
     var showAccidentDialog by remember { mutableStateOf(false) }
     
-    // Shared emergency contacts state
-    var emergencyContacts by remember { 
-        mutableStateOf(
-            listOf(
-                EmergencyContact("John Doe", "Family Leader"),
-                EmergencyContact("Jonathan Joestar", "Family Member"),
-                EmergencyContact("Mike Shinoda", "Family Member")
-            )
-        ) 
-    }
+    // Emergency contacts are now managed by EmergencyContactViewModel
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -69,25 +69,25 @@ fun MainApp(username: String) {
                         when (tabIndex) {
                             0 -> HomeScreen(
                                 userName = username,
-                                emergencyContacts = emergencyContacts,
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true },
                                 onNavigateToBlackbox = { 
                                     showPulsaBalanceScreen = false
                                     selectedTab = 1 
                                 },
                                 showAccidentCard = showAccidentCard,
-                                onShowAccidentDialog = { showAccidentDialog = true }
+                                onShowAccidentDialog = { showAccidentDialog = true },
+                                authViewModel = authViewModel,
+                                emergencyContactViewModel = emergencyContactViewModel
                             )
                             1 -> BlackboxScreen(
-                                emergencyContacts = emergencyContacts,
-                                onEmergencyContactsChange = { newContacts ->
-                                    emergencyContacts = newContacts
-                                },
-                                onNavigateToPulsaBalance = { showPulsaBalanceScreen = true }
+                                onNavigateToPulsaBalance = { showPulsaBalanceScreen = true },
+                                authViewModel = authViewModel,
+                                emergencyContactViewModel = emergencyContactViewModel
                             )
                             2 -> TutorialScreen()
                             3 -> SettingsScreen(
-                                onShowAccidentDialog = { showAccidentDialog = true }
+                                onShowAccidentDialog = { showAccidentDialog = true },
+                                onLogoutSuccess = onLogout
                             )
                         }
                     }
