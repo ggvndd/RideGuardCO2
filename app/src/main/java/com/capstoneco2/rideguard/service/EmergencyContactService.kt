@@ -86,12 +86,15 @@ class EmergencyContactService {
      */
     suspend fun getEmergencyContacts(ownerUid: String): Result<List<EmergencyContactInfo>> {
         return try {
+            android.util.Log.d("EmergencyContactService", "Querying emergency contacts for ownerUid: $ownerUid")
+            
             val emergencyContactsQuery = emergencyContactsCollection
                 .whereEqualTo("ownerUid", ownerUid)
                 .whereEqualTo("isActive", true)
-                .orderBy("addedAt", Query.Direction.ASCENDING)
                 .get()
                 .await()
+            
+            android.util.Log.d("EmergencyContactService", "Found ${emergencyContactsQuery.size()} emergency contact documents")
             
             val contactInfoList = mutableListOf<EmergencyContactInfo>()
             
@@ -119,9 +122,14 @@ class EmergencyContactService {
                 }
             }
             
-            Result.success(contactInfoList)
+            // Sort by addedAt in memory since we removed orderBy to avoid index requirement
+            val sortedContacts = contactInfoList.sortedBy { it.addedAt }
+            
+            android.util.Log.d("EmergencyContactService", "Returning ${sortedContacts.size} emergency contacts: $sortedContacts")
+            Result.success(sortedContacts)
             
         } catch (e: Exception) {
+            android.util.Log.e("EmergencyContactService", "Error loading emergency contacts", e)
             Result.failure(e)
         }
     }

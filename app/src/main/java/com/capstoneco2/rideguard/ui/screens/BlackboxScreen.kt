@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
 import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.data.EmergencyContactInfo
 import com.capstoneco2.rideguard.ui.components.AddEmergencyContactDialog
@@ -93,9 +94,11 @@ fun BlackboxScreen(
     
     // Load emergency contacts when screen loads
     LaunchedEffect(authState.user) {
+        android.util.Log.d("BlackboxScreen", "LaunchedEffect triggered. User: ${authState.user?.uid}")
         authState.user?.uid?.let { userId ->
+            android.util.Log.d("BlackboxScreen", "Loading emergency contacts for user: $userId")
             emergencyContactViewModel.loadEmergencyContacts(userId)
-        }
+        } ?: android.util.Log.w("BlackboxScreen", "User UID is null, not loading emergency contacts")
     }
     var isDeviceOnline by remember { mutableStateOf(false) } // Changed to false by default
     var deletionRate by remember { mutableStateOf("3 Hours") }
@@ -983,6 +986,7 @@ fun EmergencyContactsSection(
         Spacer(modifier = Modifier.height(16.dp))
         
         // Loading indicator or contact list
+        android.util.Log.d("BlackboxScreen", "Rendering EmergencyContactsSection. isLoading: $isLoading, emergencyContacts.size: ${emergencyContacts.size}")
         if (isLoading) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

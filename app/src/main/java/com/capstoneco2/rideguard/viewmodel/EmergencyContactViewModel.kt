@@ -30,18 +30,23 @@ class EmergencyContactViewModel : ViewModel() {
      */
     fun loadEmergencyContacts(userUid: String) {
         viewModelScope.launch {
+            android.util.Log.d("EmergencyContactVM", "Loading emergency contacts for user: $userUid")
             _state.value = _state.value.copy(isLoading = true, error = null)
             
             val result = emergencyContactService.getEmergencyContacts(userUid)
             if (result.isSuccess) {
+                val contacts = result.getOrNull() ?: emptyList()
+                android.util.Log.d("EmergencyContactVM", "Loaded ${contacts.size} emergency contacts: $contacts")
                 _state.value = _state.value.copy(
-                    contacts = result.getOrNull() ?: emptyList(),
+                    contacts = contacts,
                     isLoading = false
                 )
             } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to load emergency contacts"
+                android.util.Log.e("EmergencyContactVM", "Failed to load emergency contacts: $error")
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = result.exceptionOrNull()?.message ?: "Failed to load emergency contacts"
+                    error = error
                 )
             }
         }
@@ -74,21 +79,41 @@ class EmergencyContactViewModel : ViewModel() {
      */
     fun addEmergencyContact(ownerUid: String, contactUsername: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            _state.value = _state.value.copy(isLoading = true, error = null, successMessage = null)
             
             val result = emergencyContactService.addEmergencyContact(ownerUid, contactUsername)
             if (result.isSuccess) {
+                // Set success message first (this will trigger dialog dismissal)
                 _state.value = _state.value.copy(
                     isLoading = false,
                     successMessage = "Successfully added $contactUsername as emergency contact",
                     searchResults = emptyList() // Clear search results
                 )
-                // Reload contacts to show the new addition
-                loadEmergencyContacts(ownerUid)
+                
+                // Add a small delay to ensure Firestore write is complete
+                kotlinx.coroutines.delay(500)
+                
+                // Then reload contacts to show the new addition
+                loadEmergencyContactsAfterAdd(ownerUid)
             } else {
                 _state.value = _state.value.copy(
                     isLoading = false,
                     error = result.exceptionOrNull()?.message ?: "Failed to add emergency contact"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Load emergency contacts after adding - doesn't clear success message
+     */
+    private fun loadEmergencyContactsAfterAdd(userUid: String) {
+        viewModelScope.launch {
+            val result = emergencyContactService.getEmergencyContacts(userUid)
+            if (result.isSuccess) {
+                _state.value = _state.value.copy(
+                    contacts = result.getOrNull() ?: emptyList()
+                    // Don't clear successMessage here
                 )
             }
         }

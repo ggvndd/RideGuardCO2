@@ -1,5 +1,6 @@
 package com.capstoneco2.rideguard.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -74,8 +75,12 @@ fun HomeScreen(
     
     // Load emergency contacts when screen loads
     LaunchedEffect(currentUserUid) {
+        android.util.Log.d("HomeScreen", "LaunchedEffect triggered. CurrentUserUid: $currentUserUid")
         if (currentUserUid.isNotEmpty()) {
+            android.util.Log.d("HomeScreen", "Loading emergency contacts for user: $currentUserUid")
             emergencyContactViewModel.loadEmergencyContacts(currentUserUid)
+        } else {
+            android.util.Log.w("HomeScreen", "CurrentUserUid is empty, not loading emergency contacts")
         }
     }
 
@@ -398,6 +403,8 @@ private fun HomeEmergencyContactsSection(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
+        
+        Log.d("HomeScreen", "Rendering emergency contacts section. isLoading: $isLoading, emergencyContacts.size: ${emergencyContacts.size}")
         
         if (isLoading) {
             Row(
