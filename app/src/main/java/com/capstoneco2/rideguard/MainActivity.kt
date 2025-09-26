@@ -1,6 +1,7 @@
 package com.capstoneco2.rideguard
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.messaging.FirebaseMessaging
 import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.ui.screens.SignInPage
 import com.capstoneco2.rideguard.ui.screens.SignUpPage
@@ -34,8 +36,17 @@ enum class AppScreen {
 }
 
 class MainActivity : ComponentActivity() {
+    
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Get FCM registration token
+        retrieveFCMToken()
+        
         enableEdgeToEdge()
         setContent {
             MyAppTheme {
@@ -47,6 +58,29 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+    
+    private fun retrieveFCMToken() {
+        FirebaseMessaging.getInstance().token
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    Log.w(TAG, "Fetching FCM registration token failed", task.exception)
+                    return@addOnCompleteListener
+                }
+
+                // Get new FCM registration token
+                val token = task.result
+                Log.d(TAG, "FCM Registration Token: $token")
+                Log.i(TAG, "Token length: ${token?.length}")
+                
+                // Print token in a way that's easy to copy from logs
+                println("=== FCM REGISTRATION TOKEN ===")
+                println(token)
+                println("==============================")
+                
+                // TODO: Send token to your server or store in Firestore
+                // You can store this token in user's profile for sending push notifications
+            }
     }
 }
 
