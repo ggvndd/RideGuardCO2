@@ -26,6 +26,11 @@ import com.capstoneco2.rideguard.service.FCMTokenService
 import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.Manifest
+import com.capstoneco2.rideguard.service.SmsService
 import com.capstoneco2.rideguard.ui.screens.SignInPage
 import com.capstoneco2.rideguard.ui.screens.SignUpPage
 import com.capstoneco2.rideguard.ui.screens.WelcomePage
@@ -42,9 +47,11 @@ enum class AppScreen {
 class MainActivity : ComponentActivity() {
     
     private val fcmTokenService = FCMTokenService()
+    private val smsService = SmsService()
     
     companion object {
         private const val TAG = "MainActivity"
+        private const val SMS_PERMISSION_REQUEST_CODE = 123
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +59,9 @@ class MainActivity : ComponentActivity() {
         
         // Get FCM registration token
         retrieveFCMToken()
+        
+        // Request SMS permissions and test SMS reading
+        requestSmsPermissions()
         
         enableEdgeToEdge()
         setContent {
@@ -220,6 +230,139 @@ class MainActivity : ComponentActivity() {
                 Log.e(TAG, "Exception during periodic FCM token cleanup", e)
             }
         }
+    }
+
+    /**
+     * Request SMS permissions for reading incoming SMS messages
+     */
+    private fun requestSmsPermissions() {
+        val permissionsNeeded = mutableListOf<String>()
+        
+        // Check READ_SMS permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) 
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(Manifest.permission.READ_SMS)
+        }
+        
+        // Check RECEIVE_SMS permission
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) 
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsNeeded.add(Manifest.permission.RECEIVE_SMS)
+        }
+        
+        if (permissionsNeeded.isNotEmpty()) {
+            Log.d(TAG, "Requesting SMS permissions: ${permissionsNeeded.joinToString(", ")}")
+            ActivityCompat.requestPermissions(
+                this,
+                permissionsNeeded.toTypedArray(),
+                SMS_PERMISSION_REQUEST_CODE
+            )
+        } else {
+            Log.i(TAG, "SMS permissions already granted")
+            onSmsPermissionsGranted()
+        }
+    }
+    
+    /**
+     * Handle permission request results
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        when (requestCode) {
+            SMS_PERMISSION_REQUEST_CODE -> {
+                val readSmsGranted = grantResults.isNotEmpty() && 
+                    permissions.contains(Manifest.permission.READ_SMS) &&
+                    grantResults[permissions.indexOf(Manifest.permission.READ_SMS)] == PackageManager.PERMISSION_GRANTED
+                
+                val receiveSmsGranted = grantResults.isNotEmpty() && 
+                    permissions.contains(Manifest.permission.RECEIVE_SMS) &&
+                    grantResults[permissions.indexOf(Manifest.permission.RECEIVE_SMS)] == PackageManager.PERMISSION_GRANTED
+                
+                if (readSmsGranted && receiveSmsGranted) {
+                    Log.i(TAG, "✅ SMS permissions granted successfully!")
+                    onSmsPermissionsGranted()
+                } else {
+                    Log.w(TAG, "❌ SMS permissions denied. SMS reading functionality will not work.")
+                    Log.w(TAG, "READ_SMS granted: $readSmsGranted")
+                    Log.w(TAG, "RECEIVE_SMS granted: $receiveSmsGranted")
+                }
+            }
+        }
+    }
+    
+    /**
+     * Called when SMS permissions are granted - initialize SMS functionality
+     */
+    private fun onSmsPermissionsGranted() {
+        Log.i(TAG, "🎉 SMS functionality initialized!")
+        Log.i(TAG, "📱 The app will now log all incoming SMS messages to console")
+        Log.i(TAG, "📱 Emergency keywords will be detected and highlighted")
+        
+        // Test reading existing SMS messages for debugging
+        testReadExistingSmsMessages()
+        
+        // Log that the receiver is ready
+        Log.i(TAG, "📡 SMS Receiver is now active and waiting for incoming messages...")
+        Log.i(TAG, "📡 Send an SMS to this device to see it logged in the console!")
+        
+        // Print some debugging info
+        printSmsDebuggingInfo()
+    }
+    
+    /**
+     * Test reading existing SMS messages from device
+     */
+    private fun testReadExistingSmsMessages() {
+        Log.d(TAG, "🧪 Testing SMS reading functionality...")
+        
+        lifecycleScope.launch {
+            try {
+                val existingMessages = smsService.getAllSmsMessages(this@MainActivity)
+                Log.i(TAG, "📊 Found ${existingMessages.size} existing SMS messages")
+                
+                if (existingMessages.isEmpty()) {
+                    Log.i(TAG, "📱 No existing SMS messages found. Send an SMS to test the functionality!")
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error testing SMS reading", e)
+            }
+        }
+    }
+    
+    /**
+     * Print debugging information for SMS functionality
+     */
+    private fun printSmsDebuggingInfo() {
+        Log.i(TAG, "╔════════════════════════════════════════════════════════════════")
+        Log.i(TAG, "║ SMS DEBUGGING INFORMATION")
+        Log.i(TAG, "╠════════════════════════════════════════════════════════════════")
+        Log.i(TAG, "║ 📱 SMS functionality is now ACTIVE")
+        Log.i(TAG, "║ 📡 Listening for incoming SMS messages...")
+        Log.i(TAG, "║ 🚨 Emergency keyword detection is ENABLED")
+        Log.i(TAG, "║ 📝 All SMS will be logged to Android Studio console")
+        Log.i(TAG, "║ ")
+        Log.i(TAG, "║ Emergency Keywords Monitored:")
+        Log.i(TAG, "║ • English: help, emergency, urgent, accident, danger, etc.")
+        Log.i(TAG, "║ • Spanish: socorro, emergencia, urgente, accidente, etc.")
+        Log.i(TAG, "║ ")
+        Log.i(TAG, "║ To Test:")
+        Log.i(TAG, "║ 1. Send an SMS to this device from another phone")
+        Log.i(TAG, "║ 2. Check Android Studio Logcat for SMS logs")
+        Log.i(TAG, "║ 3. Try sending SMS with word 'emergency' to test detection")
+        Log.i(TAG, "╚════════════════════════════════════════════════════════════════")
+        
+        // Also print to system console for easier debugging
+        println("=== SMS FUNCTIONALITY ACTIVE ===")
+        println("📱 Ready to intercept and log SMS messages")
+        println("🚨 Emergency detection enabled")
+        println("📝 Check Android Studio Logcat for detailed SMS logs")
+        println("================================")
     }
 }
 
