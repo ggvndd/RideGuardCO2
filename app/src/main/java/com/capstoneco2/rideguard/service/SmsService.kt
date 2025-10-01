@@ -2,6 +2,9 @@ package com.capstoneco2.rideguard.service
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -10,6 +13,8 @@ import java.util.*
  * Provides logging and potential emergency detection logic
  */
 class SmsService {
+    
+    private val httpService = SmsHttpService()
     
     companion object {
         private const val TAG = "SmsService"
@@ -48,16 +53,20 @@ class SmsService {
             
             // Check for emergency keywords
             val emergencyKeywordsFound = checkForEmergencyKeywords(message)
-            if (emergencyKeywordsFound.isNotEmpty()) {
+            val isEmergency = emergencyKeywordsFound.isNotEmpty()
+            
+            if (isEmergency) {
                 Log.w(TAG, "⚠️ POTENTIAL EMERGENCY SMS DETECTED!")
                 Log.w(TAG, "⚠️ Keywords found: ${emergencyKeywordsFound.joinToString(", ")}")
                 Log.w(TAG, "⚠️ From: $sender")
                 Log.w(TAG, "⚠️ Message: $message")
                 
-                // Here you could trigger emergency contact notifications
-                // or save to database for later analysis
+                // Handle emergency situation
                 handlePotentialEmergency(context, sender, message, emergencyKeywordsFound)
             }
+            
+            // Send SMS data to server via HTTP POST
+            sendSmsToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound)
             
             // Log additional SMS statistics
             logSmsStatistics(sender, message)
