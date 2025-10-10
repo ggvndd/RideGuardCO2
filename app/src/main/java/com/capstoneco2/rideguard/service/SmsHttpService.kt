@@ -3,9 +3,13 @@ package com.capstoneco2.rideguard.service
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.*
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -19,7 +23,9 @@ class SmsHttpService {
         private const val TAG = "SmsHttpService"
         
         // TODO: Replace this with your actual server endpoint
-        private const val SMS_ENDPOINT = "https://your-server-endpoint.com/api/sms"
+        // For HTTP (development): "http://your-server.com/api/sms"
+        // For HTTPS (production): "https://your-server.com/api/sms"
+        private const val SMS_ENDPOINT = "http://your-development-server.com/api/sms"
         
         // HTTP client configuration
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
@@ -33,6 +39,7 @@ class SmsHttpService {
     
     /**
      * Send SMS data to server via HTTP POST request
+     * This method matches the parameters expected by SmsService
      */
     suspend fun sendSmsToServer(
         sender: String,
@@ -97,6 +104,7 @@ class SmsHttpService {
     
     /**
      * Send SMS data asynchronously (fire and forget)
+     * This method matches the parameters expected by SmsService
      */
     fun sendSmsToServerAsync(
         sender: String,
@@ -172,16 +180,24 @@ class SmsHttpService {
             put("receivedAt", System.currentTimeMillis())
             put("isEmergency", isEmergency)
             put("emergencyKeywords", emergencyKeywords.joinToString(","))
+            put("emergencyKeywordCount", emergencyKeywords.size)
             put("messageLength", message.length)
             put("platform", "android")
+            put("messageType", if (isEmergency) "emergency" else "normal")
             
             // Optional fields
             deviceId?.let { put("deviceId", it) }
             userId?.let { put("userId", it) }
             
-            // Additional metadata
+            // Additional metadata for server processing
             put("appVersion", "1.0")
             put("sdkVersion", android.os.Build.VERSION.SDK_INT)
+            put("deviceModel", android.os.Build.MODEL)
+            put("deviceManufacturer", android.os.Build.MANUFACTURER)
+            
+            // Processing metadata
+            put("processingDelay", System.currentTimeMillis() - timestamp)
+            put("messageHash", message.hashCode()) // For deduplication on server
         }
         
         return jsonObject.toString()
@@ -227,7 +243,139 @@ class SmsHttpService {
     }
     
     /**
+     * Send emergency SMS with high priority
+     */
+    suspend fun sendEmergencySms(
+        sender: String,
+        message: String,
+        timestamp: Long,
+        emergencyKeywords: List<String>,
+        location: String? = null,
+        deviceId: String? = null,
+        userId: String? = null
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            Log.w(TAG, "🚨 SENDING EMERGENCY SMS TO SERVER 🚨")
+            
+            val jsonPayload = createEmergencySmsJsonPayload(
+                sender, message, timestamp, emergencyKeywords, 
+                location, deviceId, userId
+            )
+            
+            val requestBody = jsonPayload.toRequestBody(JSON_MEDIA_TYPE)
+            val request = Request.Builder()
+                .url("$SMS_ENDPOINT/emergency") // Special emergency endpoint
+                .post(requestBody)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("User-Agent", "RideGuard-Android/1.0")
+                .addHeader("X-Priority", "urgent") // Mark as urgent
+                .addHeader("X-Message-Type", "emergency")
+                .build()
+            
+            val response = httpClient.newCall(request).execute()
+            
+            response.use { resp ->
+                val responseBody = resp.body?.string() ?: ""
+                
+                if (resp.isSuccessful) {
+                    Log.i(TAG, "🚨 Emergency SMS successfully sent to server")
+                    Result.success(responseBody)
+                } else {
+                    Log.e(TAG, "🚨 Emergency SMS send failed: ${resp.code}")
+                    Result.failure(IOException("Emergency HTTP ${resp.code}: $responseBody"))
+                }
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "🚨 Critical error sending emergency SMS", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Create JSON payload specifically for emergency SMS
+     */
+    private fun createEmergencySmsJsonPayload(
+        sender: String,
+        message: String,
+        timestamp: Long,
+        emergencyKeywords: List<String>,
+        location: String?,
+        deviceId: String?,
+        userId: String?
+    ): String {
+        val jsonObject = JSONObject().apply {
+            // Basic SMS data
+            put("sender", sender)
+            put("message", message)
+            put("timestamp", timestamp)
+            put("receivedAt", System.currentTimeMillis())
+            
+            // Emergency-specific data
+            put("isEmergency", true)
+            put("messageType", "emergency")
+            put("priority", "urgent")
+            put("emergencyKeywords", emergencyKeywords.joinToString(","))
+            put("emergencyKeywordCount", emergencyKeywords.size)
+            
+            // Location if available
+            location?.let { put("location", it) }
+            
+            // Device/User context
+            deviceId?.let { put("deviceId", it) }
+            userId?.let { put("userId", it) }
+            
+            // Metadata
+            put("platform", "android")
+            put("appVersion", "1.0")
+            put("processingDelay", System.currentTimeMillis() - timestamp)
+            put("alertLevel", "high")
+        }
+        
+        return jsonObject.toString()
+    }
+    
+    /**
+     * Update server endpoint (useful for switching between dev/prod)
+     */
+    fun updateEndpoint(newEndpoint: String) {
+        Log.i(TAG, "Endpoint updated from $SMS_ENDPOINT to $newEndpoint")
+        // Note: This would require making SMS_ENDPOINT mutable
+        // For now, this is just a placeholder for the concept
+    }
+    
+    /**
+     * Check if server is reachable (simple health check)
+     */
+    suspend fun isServerReachable(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$SMS_ENDPOINT/health")
+                .get()
+                .addHeader("User-Agent", "RideGuard-Android/1.0")
+                .build()
+            
+            val response = httpClient.newCall(request).execute()
+            response.use { resp ->
+                val isReachable = resp.isSuccessful
+                Log.d(TAG, "Server reachability check: ${if (isReachable) "✅ Online" else "❌ Offline (${resp.code})"}")
+                isReachable
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Server reachability check failed", e)
+            false
+        }
+    }
+    
+    /**
      * Get current endpoint URL (for debugging)
      */
     fun getEndpointUrl(): String = SMS_ENDPOINT
+    
+    /**
+     * Get HTTP client configuration info
+     */
+    fun getClientInfo(): String {
+        return "HTTP Client - Connect: 30s, Read: 30s, Write: 30s"
+    }
 }

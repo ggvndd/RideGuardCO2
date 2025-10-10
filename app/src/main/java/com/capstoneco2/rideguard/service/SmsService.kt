@@ -16,8 +16,13 @@ class SmsService {
     
     private val httpService = SmsHttpService()
     
+    // Gateway settings
+    private var isGatewayEnabled = false
+    
     companion object {
         private const val TAG = "SmsService"
+        private const val PREFS_NAME = "sms_gateway_prefs"
+        private const val KEY_GATEWAY_ENABLED = "gateway_enabled"
         
         // Keywords that might indicate emergency situations
         private val EMERGENCY_KEYWORDS = listOf(
@@ -65,14 +70,116 @@ class SmsService {
                 handlePotentialEmergency(context, sender, message, emergencyKeywordsFound)
             }
             
-            // Send SMS data to server via HTTP POST
-            sendSmsToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound)
+            // Send SMS data to server via HTTP POST (only if gateway is enabled)
+            if (isGatewayEnabled(context)) {
+                Log.i(TAG, "🌐 Gateway mode enabled - forwarding SMS to server")
+                sendSmsDataToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound)
+            } else {
+                Log.d(TAG, "📱 Gateway mode disabled - SMS processed locally only")
+            }
             
             // Log additional SMS statistics
             logSmsStatistics(sender, message)
             
         } catch (e: Exception) {
             Log.e(TAG, "Error processing SMS message", e)
+        }
+    }
+    
+    /**
+     * Send SMS data to server via HTTP service
+     * This method acts as a bridge between SmsService and SmsHttpService
+     */
+    private fun sendSmsDataToServer(
+        context: Context,
+        sender: String,
+        message: String,
+        timestamp: Long,
+        isEmergency: Boolean,
+        emergencyKeywords: List<String>
+    ) {
+        try {
+            Log.d(TAG, "🌐 Preparing to send SMS data to server...")
+            
+            // Get device/user context for better tracking
+            val deviceId = getDeviceId(context)
+            val userId = getUserId(context)
+            
+            // Use coroutine scope to send data asynchronously
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    // Use emergency endpoint for urgent messages
+                    val result = if (isEmergency) {
+                        Log.w(TAG, "🚨 Using emergency SMS transmission")
+                        httpService.sendEmergencySms(
+                            sender = sender,
+                            message = message,
+                            timestamp = timestamp,
+                            emergencyKeywords = emergencyKeywords,
+                            location = null, // TODO: Add location service integration
+                            deviceId = deviceId,
+                            userId = userId
+                        )
+                    } else {
+                        httpService.sendSmsToServer(
+                            sender = sender,
+                            message = message,
+                            timestamp = timestamp,
+                            isEmergency = isEmergency,
+                            emergencyKeywords = emergencyKeywords,
+                            deviceId = deviceId,
+                            userId = userId
+                        )
+                    }
+                    
+                    result.fold(
+                        onSuccess = { response ->
+                            Log.i(TAG, "✅ SMS data successfully sent to server")
+                            Log.d(TAG, "Server response: $response")
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "❌ Failed to send SMS data to server", error)
+                            // Could implement retry logic here if needed
+                        }
+                    )
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Exception while sending SMS data to server", e)
+                }
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error preparing SMS data for server transmission", e)
+        }
+    }
+    
+    /**
+     * Get device ID for tracking (simplified version)
+     */
+    private fun getDeviceId(context: Context): String? {
+        return try {
+            // Using a simple approach - you might want to use Firebase Installation ID or similar
+            android.provider.Settings.Secure.getString(
+                context.contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get device ID", e)
+            null
+        }
+    }
+    
+    /**
+     * Get user ID if available (placeholder for your authentication system)
+     */
+    private fun getUserId(context: Context): String? {
+        return try {
+            // TODO: Implement based on your authentication system
+            // For now, return null - you can integrate with Firebase Auth or your user system
+            null
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get user ID", e)
+            null
         }
     }
     
@@ -209,6 +316,74 @@ class SmsService {
         }
         
         return smsList
+    }
+    
+    /**
+     * Enable or disable SMS gateway functionality
+     */
+    fun setGatewayEnabled(context: Context, enabled: Boolean) {
+        isGatewayEnabled = enabled
+        
+        // Save to SharedPreferences for persistence
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_GATEWAY_ENABLED, enabled).apply()
+        
+        Log.i(TAG, "🌐 SMS Gateway ${if (enabled) "ENABLED" else "DISABLED"}")
+        Log.i(TAG, "🌐 SMS messages will ${if (enabled) "be forwarded to server" else "stay local only"}")
+    }
+    
+    /**
+     * Check if SMS gateway is enabled
+     */
+    fun isGatewayEnabled(context: Context): Boolean {
+        // Load from SharedPreferences if not already loaded
+        if (!isGatewayEnabled) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            isGatewayEnabled = prefs.getBoolean(KEY_GATEWAY_ENABLED, false)
+        }
+        return isGatewayEnabled
+    }
+    
+    /**
+     * Get gateway status information for debugging
+     */
+    fun getGatewayStatus(context: Context): String {
+        val isEnabled = isGatewayEnabled(context)
+        val endpoint = httpService.getEndpointUrl()
+        return "Gateway: ${if (isEnabled) "✅ Active" else "❌ Inactive"} | Endpoint: $endpoint"
+    }
+    
+    /**
+     * Test the gateway connection (useful for settings screen)
+     */
+    suspend fun testGatewayConnection(context: Context): Result<String> {
+        return if (isGatewayEnabled(context)) {
+            try {
+                Log.d(TAG, "🌐 Testing gateway connection...")
+                val result = httpService.testServerConnection()
+                result.fold(
+                    onSuccess = { connected ->
+                        val message = if (connected) {
+                            "Gateway connection successful!"
+                        } else {
+                            "Gateway reachable but server returned error"
+                        }
+                        Log.i(TAG, "✅ $message")
+                        Result.success(message)
+                    },
+                    onFailure = { error ->
+                        val message = "Gateway connection failed: ${error.message}"
+                        Log.e(TAG, "❌ $message")
+                        Result.failure(error)
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Gateway test error", e)
+                Result.failure(e)
+            }
+        } else {
+            Result.success("Gateway is disabled - no connection test needed")
+        }
     }
     
     /**

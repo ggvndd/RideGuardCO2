@@ -46,6 +46,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.ui.components.BodyText
+import com.capstoneco2.rideguard.ui.components.CaptionText
 import com.capstoneco2.rideguard.ui.components.MainHeader
 import com.capstoneco2.rideguard.ui.components.PrimaryButton
 import com.capstoneco2.rideguard.ui.components.SectionHeader
@@ -54,6 +55,9 @@ import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.network.NetworkRepository
+import com.capstoneco2.rideguard.service.SmsService
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,14 +67,22 @@ fun SettingsScreen(
     authViewModel: AuthViewModel = viewModel()
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
+    var useAsGateway by remember { mutableStateOf(false) }
     var selectedInterval by remember { mutableStateOf("60 Seconds") }
     var showDropdown by remember { mutableStateOf(false) }
     var apiTestResult by remember { mutableStateOf<String?>(null) }
     var isApiTesting by remember { mutableStateOf(false) }
     var phoneNumber by remember { mutableStateOf("") }
     
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val networkRepository = remember { NetworkRepository.getInstance() }
+    val smsService = remember { SmsService() }
+    
+    // Load gateway setting on startup
+    LaunchedEffect(Unit) {
+        useAsGateway = smsService.isGatewayEnabled(context)
+    }
     
     // Get auth state and user profile
     val authState by authViewModel.authState.collectAsState()
@@ -136,6 +148,41 @@ fun SettingsScreen(
                 )
             }
             
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Use As Gateway Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    BodyText(
+                        text = "Use As Gateway",
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    CaptionText(
+                        text = "Forward SMS messages to server",
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+                }
+                Switch(
+                    checked = useAsGateway,
+                    onCheckedChange = { enabled ->
+                        useAsGateway = enabled
+                        smsService.setGatewayEnabled(context, enabled)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = Color.Gray
+                    )
+                )
+            }
+            
         }
         
         item {
@@ -150,6 +197,7 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
+
                 
                 Box {
                     Box(
@@ -247,6 +295,42 @@ fun SettingsScreen(
             
             BodyText(
                 text = "Test POST request to API endpoint with JSON data.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Test Gateway Connection Button
+            SecondaryButton(
+                text = if (isApiTesting) "Testing Gateway..." else "Test SMS Gateway Connection",
+                onClick = {
+                    if (!isApiTesting) {
+                        isApiTesting = true
+                        apiTestResult = null
+                        coroutineScope.launch {
+                            try {
+                                val result = smsService.testGatewayConnection(context)
+                                apiTestResult = if (result.isSuccess) {
+                                    "✅ ${result.getOrNull()}"
+                                } else {
+                                    "❌ Gateway Test Failed: ${result.exceptionOrNull()?.message}"
+                                }
+                            } catch (e: Exception) {
+                                apiTestResult = "❌ Gateway Error: ${e.message}"
+                            } finally {
+                                isApiTesting = false
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isApiTesting
+            )
+            
+            BodyText(
+                text = "Test SMS gateway connection to server endpoint.",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()

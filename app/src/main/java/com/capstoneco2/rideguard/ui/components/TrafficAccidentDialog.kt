@@ -41,6 +41,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.viewinterop.AndroidView
+import android.webkit.WebView
+import android.webkit.WebViewClient
 
 // Enum for accident dialog states
 enum class AccidentDialogState {
@@ -55,7 +61,9 @@ fun TrafficAccidentDialog(
     onDismiss: () -> Unit,
     onCheckLocation: () -> Unit = {},
     onCallEmergencyServices: () -> Unit = {},
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    latitude: Double = -7.7956, // Default to Yogyakarta coordinates for testing
+    longitude: Double = 110.3695
 ) {
     var dialogState by remember { mutableStateOf(AccidentDialogState.ACCIDENT_DETECTED) }
     
@@ -104,7 +112,9 @@ fun TrafficAccidentDialog(
                         AccidentDialogState.LOCATION_VIEW -> {
                             LocationViewContent(
                                 onBack = { dialogState = AccidentDialogState.ACCIDENT_DETECTED },
-                                onClose = onClose
+                                onClose = onClose,
+                                latitude = latitude,
+                                longitude = longitude
                             )
                         }
                         AccidentDialogState.EMERGENCY_SERVICES -> {
@@ -240,8 +250,12 @@ private fun AccidentDetectedContent(
 @Composable
 private fun LocationViewContent(
     onBack: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    latitude: Double,
+    longitude: Double
 ) {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier.padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -255,24 +269,43 @@ private fun LocationViewContent(
             textAlign = TextAlign.Center
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         
-        // Map placeholder - you can replace this with actual map integration
+        // Location coordinates display
+        Text(
+            text = "Coordinates: $latitude, $longitude",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Black.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Embedded Google Maps using WebView
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(250.dp)
                 .background(
-                    Color.Gray.copy(alpha = 0.2f),
+                    Color.Gray.copy(alpha = 0.1f),
                     RoundedCornerShape(12.dp)
-                ),
-            contentAlignment = Alignment.Center
+                )
         ) {
-            Text(
-                text = "�️ Map View\n\nAccident Location:\nJl. Grafika No.2, Senolowo\nSinduadi, Kec. Mlati",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.Gray,
-                textAlign = TextAlign.Center
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
+                factory = { context ->
+                    WebView(context).apply {
+                        webViewClient = WebViewClient()
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        
+                        // For now, load a simple map view (you'll need to add your Google Maps API key)
+                        val simpleMapUrl = "https://maps.google.com/maps?q=$latitude,$longitude&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                        loadUrl(simpleMapUrl)
+                    }
+                }
             )
         }
         
@@ -283,7 +316,7 @@ private fun LocationViewContent(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Check at Maps App Button - Filled
+            // Open in Google Maps App Button - Filled
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -291,12 +324,34 @@ private fun LocationViewContent(
                         MaterialTheme.colorScheme.error,
                         RoundedCornerShape(12.dp)
                     )
-                    .clickable { /* Open maps app */ }
+                    .clickable { 
+                        // Open Google Maps app with the coordinates
+                        try {
+                            val gmmIntentUri = Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude(Accident Location)")
+                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                            mapIntent.setPackage("com.google.android.apps.maps")
+                            
+                            // If Google Maps app is not available, open in browser
+                            if (mapIntent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(mapIntent)
+                            } else {
+                                // Fallback to browser
+                                val browserIntent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse("https://maps.google.com/?q=$latitude,$longitude")
+                                )
+                                context.startActivity(browserIntent)
+                            }
+                        } catch (e: Exception) {
+                            // Handle error - could show a toast or log
+                            e.printStackTrace()
+                        }
+                    }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Check at Maps App",
+                    text = "Open in Google Maps",
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                     color = Color.White
                 )
