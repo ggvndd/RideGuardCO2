@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.capstoneco2.rideguard.data.EmergencyContactInfo
 import com.capstoneco2.rideguard.data.UserProfile
-import com.capstoneco2.rideguard.service.EmergencyContactService
+import com.capstoneco2.rideguard.service.EmergencyContactServiceAdapter
+import com.capstoneco2.rideguard.service.UserProfileService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +21,8 @@ data class EmergencyContactState(
 )
 
 class EmergencyContactViewModel : ViewModel() {
-    private val emergencyContactService = EmergencyContactService()
+    private val userProfileService = UserProfileService()
+    private val emergencyContactService = EmergencyContactServiceAdapter(userProfileService)
     
     private val _state = MutableStateFlow(EmergencyContactState())
     val state: StateFlow<EmergencyContactState> = _state.asStateFlow()
@@ -126,7 +128,7 @@ class EmergencyContactViewModel : ViewModel() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             
-            val result = emergencyContactService.removeEmergencyContact(contactId)
+            val result = emergencyContactService.removeEmergencyContact(userUid, contactId)
             if (result.isSuccess) {
                 _state.value = _state.value.copy(
                     isLoading = false,

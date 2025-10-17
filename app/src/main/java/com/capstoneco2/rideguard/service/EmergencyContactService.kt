@@ -12,8 +12,17 @@ import com.capstoneco2.rideguard.service.UserProfileService
 import kotlinx.coroutines.tasks.await
 
 /**
- * Service for managing emergency contact relationships in Firestore
+ * DEPRECATED: Service for managing emergency contact relationships in Firestore
+ * 
+ * This service is deprecated and should be replaced with EmergencyContactServiceAdapter
+ * Emergency contacts are now stored as nested relations in user profiles instead of a separate collection.
+ * 
+ * Migration path:
+ * 1. Replace EmergencyContactService with EmergencyContactServiceAdapter in dependency injection
+ * 2. Update UI components to use the new adapter
+ * 3. Remove this file once all references are updated
  */
+@Deprecated("Use EmergencyContactServiceAdapter instead. Emergency contacts are now nested in user profiles.")
 class EmergencyContactService {
     
     private val db: FirebaseFirestore = Firebase.firestore
