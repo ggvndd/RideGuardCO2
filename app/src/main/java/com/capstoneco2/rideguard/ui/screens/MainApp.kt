@@ -32,6 +32,7 @@ fun MainApp(
     val emergencyContactViewModel: EmergencyContactViewModel = viewModel()
     var selectedTab by remember { mutableStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
+    var showFirebaseTestScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
     var showAccidentDialog by remember { mutableStateOf(false) }
     
@@ -49,6 +50,10 @@ fun MainApp(
                 if (showPulsaBalanceScreen) {
                     PulsaBalanceScreen(
                         onBackClick = { showPulsaBalanceScreen = false }
+                    )
+                } else if (showFirebaseTestScreen) {
+                    FirebaseTestScreen(
+                        onBackClick = { showFirebaseTestScreen = false }
                     )
                 } else {
                     AnimatedContent(
@@ -87,7 +92,8 @@ fun MainApp(
                             2 -> TutorialScreen()
                             3 -> SettingsScreen(
                                 onShowAccidentDialog = { showAccidentDialog = true },
-                                onLogoutSuccess = onLogout
+                                onLogoutSuccess = onLogout,
+                                onNavigateToFirebaseTest = { showFirebaseTestScreen = true }
                             )
                         }
                     }

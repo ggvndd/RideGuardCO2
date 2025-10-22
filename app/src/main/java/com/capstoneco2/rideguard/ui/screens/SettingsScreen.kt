@@ -64,6 +64,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onShowAccidentDialog: () -> Unit = { },
     onLogoutSuccess: () -> Unit = { },
+    onNavigateToFirebaseTest: () -> Unit = { },
     authViewModel: AuthViewModel = viewModel()
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
@@ -411,6 +412,26 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+        }
+        
+        item {
+            // Debug Section
+            SectionHeader(text = "Debug Tools")
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            SecondaryButton(
+                text = "Test Firebase Collections",
+                onClick = onNavigateToFirebaseTest,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            CaptionText(
+                text = "Test CrashId and RideGuardId Firebase collections",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
         
         item {
