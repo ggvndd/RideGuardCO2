@@ -53,7 +53,7 @@ fun MainApp(
                     )
                 } else if (showFirebaseTestScreen) {
                     FirebaseTestScreen(
-                        onBackClick = { showFirebaseTestScreen = false }
+                        onNavigateBack = { showFirebaseTestScreen = false }
                     )
                 } else {
                     AnimatedContent(

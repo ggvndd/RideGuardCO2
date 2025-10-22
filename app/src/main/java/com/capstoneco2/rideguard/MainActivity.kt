@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.capstoneco2.rideguard.service.FCMTokenService
 import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
@@ -46,7 +48,7 @@ enum class AppScreen {
 
 class MainActivity : ComponentActivity() {
     
-    private val fcmTokenService = FCMTokenService()
+    private val fcmTokenService = FCMTokenService(Firebase.firestore)
     private val smsService = SmsService()
     
     companion object {
@@ -127,6 +129,7 @@ class MainActivity : ComponentActivity() {
                     
                     val result = fcmTokenService.saveOrUpdateFCMToken(
                         userId = currentUserId,
+                        userDisplayName = getCurrentUserDisplayName() ?: "Unknown User",
                         token = token,
                         context = this@MainActivity,
                         appVersion = getAppVersion()
@@ -153,6 +156,14 @@ class MainActivity : ComponentActivity() {
      */
     private fun getCurrentUserId(): String? {
         return com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    }
+    
+    /**
+     * Get current authenticated user display name
+     */
+    private fun getCurrentUserDisplayName(): String? {
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        return currentUser?.displayName ?: currentUser?.email?.substringBefore("@")
     }
     
     /**
@@ -218,7 +229,7 @@ class MainActivity : ComponentActivity() {
                 if (userId != null) {
                     Log.d(TAG, "Performing periodic FCM token cleanup")
                     
-                    val result = fcmTokenService.cleanupInactiveFCMTokens(userId)
+                    val result = fcmTokenService.cleanupInactiveFCMTokens()
                     if (result.isSuccess) {
                         val deletedCount = result.getOrNull() ?: 0
                         Log.i(TAG, "Periodic cleanup completed: $deletedCount inactive tokens removed")
