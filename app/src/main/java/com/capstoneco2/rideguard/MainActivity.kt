@@ -221,13 +221,14 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Perform periodic cleanup of inactive FCM tokens
+     * Now includes safety checks to avoid index errors on empty collections
      */
     private fun performPeriodicFCMTokenCleanup() {
         lifecycleScope.launch {
             try {
                 val userId = getCurrentUserId()
                 if (userId != null) {
-                    Log.d(TAG, "Performing periodic FCM token cleanup")
+                    Log.d(TAG, "Performing periodic FCM token cleanup (with safety checks)")
                     
                     val result = fcmTokenService.cleanupInactiveFCMTokens()
                     if (result.isSuccess) {

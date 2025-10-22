@@ -322,16 +322,81 @@ class FCMTokenService @Inject constructor(
 
     /**
      * Clean up inactive FCM tokens (older than 30 days)
+     * Uses client-side filtering to avoid complex Firestore indexes
      */
     suspend fun cleanupInactiveFCMTokens(): Result<Int> = withContext(Dispatchers.IO) {
         try {
             Log.d("FCMTokenService", "Starting cleanup of inactive FCM tokens")
             
+            // First check if fcm_tokens collection exists and has any documents
+            val collectionCheck = fcmTokensCollection.limit(1).get().await()
+            if (collectionCheck.isEmpty) {
+                Log.d("FCMTokenService", "No FCM tokens found in collection, skipping cleanup")
+                return@withContext Result.success(0)
+            }
+            
+            val thirtyDaysAgo = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L
+            
+            // Get all active tokens (simple query, no composite index needed)
+            val activeTokensQuery = fcmTokensCollection
+                .whereEqualTo("isActive", true)
+            
+            val activeTokensSnapshot = activeTokensQuery.get().await()
+            
+            if (activeTokensSnapshot.isEmpty) {
+                Log.d("FCMTokenService", "No active FCM tokens found, skipping cleanup")
+                return@withContext Result.success(0)
+            }
+            
+            var deletedCount = 0
+            val batch = firestore.batch()
+            
+            // Filter old tokens on the client side to avoid composite index requirement
+            for (document in activeTokensSnapshot.documents) {
+                val lastUsedAt = document.getLong("lastUsedAt") ?: 0L
+                
+                // Check if token is older than 30 days
+                if (lastUsedAt < thirtyDaysAgo) {
+                    batch.update(document.reference, "isActive", false)
+                    deletedCount++
+                    Log.d("FCMTokenService", "Marking old FCM token as inactive: ${document.id} (last used: ${Date(lastUsedAt)})")
+                }
+            }
+            
+            if (deletedCount > 0) {
+                batch.commit().await()
+                Log.i("FCMTokenService", "Successfully deactivated $deletedCount old FCM tokens")
+            } else {
+                Log.d("FCMTokenService", "No old FCM tokens found for cleanup")
+            }
+            
+            Result.success(deletedCount)
+        } catch (e: Exception) {
+            Log.e("FCMTokenService", "Failed to cleanup inactive FCM tokens", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Alternative cleanup method using server-side filtering (requires Firestore composite index)
+     * Use this method after creating the required composite index in Firebase Console
+     * Index URL: https://console.firebase.google.com/v1/r/project/rideguard-9b11e/firestore/indexes
+     * 
+     * Required composite index fields (in order):
+     * - isActive (Ascending)
+     * - lastUsedAt (Ascending)
+     * - __name__ (Ascending)
+     */
+    suspend fun cleanupInactiveFCMTokensServerSide(): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            Log.d("FCMTokenService", "Starting server-side cleanup of inactive FCM tokens")
+            
             val thirtyDaysAgo = Timestamp(Date(System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L))
             
+            // This query requires a composite index in Firestore
             val oldTokensQuery = fcmTokensCollection
-                .whereLessThan("lastUsedAt", thirtyDaysAgo.toDate().time)
                 .whereEqualTo("isActive", true)
+                .whereLessThan("lastUsedAt", thirtyDaysAgo.toDate().time)
             
             val oldTokensSnapshot = oldTokensQuery.get().await()
             
@@ -346,14 +411,16 @@ class FCMTokenService @Inject constructor(
             
             if (deletedCount > 0) {
                 batch.commit().await()
-                Log.i("FCMTokenService", "Successfully deactivated $deletedCount old FCM tokens")
+                Log.i("FCMTokenService", "Successfully deactivated $deletedCount old FCM tokens (server-side)")
             } else {
-                Log.d("FCMTokenService", "No old FCM tokens found for cleanup")
+                Log.d("FCMTokenService", "No old FCM tokens found for cleanup (server-side)")
             }
             
             Result.success(deletedCount)
         } catch (e: Exception) {
-            Log.e("FCMTokenService", "Failed to cleanup inactive FCM tokens", e)
+            Log.e("FCMTokenService", "Failed server-side cleanup of inactive FCM tokens", e)
+            Log.e("FCMTokenService", "If you see an index error, create the composite index in Firebase Console")
+            Log.e("FCMTokenService", "Index URL provided in the error message above")
             Result.failure(e)
         }
     }
