@@ -27,8 +27,8 @@ class FCMTokenService @Inject constructor(
     private val fcmTokensCollection = db.collection("fcm_tokens")
     
     /**
-     * Save or update FCM token for a user account on a device
-     * Each user account gets its own FCM token entry on the same device
+     * Save or update FCM token for current user on this device
+     * One FCM token document per device, userId gets updated when different users sign in
      */
     suspend fun saveOrUpdateFCMToken(
         userId: String,
@@ -36,170 +36,210 @@ class FCMTokenService @Inject constructor(
         token: String,
         context: Context,
         appVersion: String = "1.0"
-    ): Result<String> {
-        return try {
-            android.util.Log.d("FCMTokenService", "Saving FCM token for user: $userId on device")
-            
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
             val deviceId = getDeviceId(context)
             val deviceName = getDeviceName(context)
+            val currentTime = System.currentTimeMillis()
             
-            // Check if token already exists for this specific user on this device
+            android.util.Log.d("FCMTokenService", "Saving/updating FCM token for user: $userId on device: $deviceId")
+            
+            // Look for existing FCM token document for this device (by deviceId and token)
             val existingTokenQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
                 .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
+                .whereEqualTo("token", token)
+                .limit(1)
                 .get()
                 .await()
             
-            if (!existingTokenQuery.isEmpty) {
-                // Update existing token for this user
+            val documentId: String
+            
+            if (existingTokenQuery.documents.isNotEmpty()) {
+                // Update existing document with new user information
                 val existingDoc = existingTokenQuery.documents.first()
+                documentId = existingDoc.id
+                
                 val updateData = mapOf(
-                    "token" to token,
-                    "lastUpdatedAt" to System.currentTimeMillis(),
-                    "lastUsedAt" to System.currentTimeMillis(),
+                    "userId" to userId,
+                    "userDisplayName" to userDisplayName,
+                    "lastUpdatedAt" to currentTime,
+                    "lastUsedAt" to currentTime,
                     "appVersion" to appVersion,
-                    "userDisplayName" to userDisplayName
+                    "isActive" to true
                 )
                 
                 existingDoc.reference.update(updateData).await()
-                android.util.Log.d("FCMTokenService", "Updated existing FCM token for user: $userId on device: $deviceId")
-                Result.success(existingDoc.id)
-            } else {
-                // Create new token record for this user account
-                val isPrimary = checkIfPrimaryUser(deviceId)
+                android.util.Log.d("FCMTokenService", "Updated existing FCM token document: $documentId with new user: $userId")
                 
+            } else {
+                // Create new document for this device
                 val fcmToken = FCMToken(
                     userId = userId,
                     token = token,
                     deviceId = deviceId,
                     deviceName = deviceName,
                     userDisplayName = userDisplayName,
+                    platform = "android",
                     appVersion = appVersion,
-                    isPrimary = isPrimary
+                    createdAt = currentTime,
+                    lastUpdatedAt = currentTime,
+                    lastUsedAt = currentTime,
+                    isActive = true,
+                    isPrimary = true // Single user per device, so always primary
                 )
                 
                 val docRef = fcmTokensCollection.add(fcmToken.toMap()).await()
-                android.util.Log.d("FCMTokenService", "Created new FCM token record for user: $userId on device: $deviceId (Primary: $isPrimary)")
-                Result.success(docRef.id)
+                documentId = docRef.id
+                android.util.Log.d("FCMTokenService", "Created new FCM token document: $documentId for user: $userId")
+            }
+            
+            Result.success(documentId)
+            
+        } catch (e: Exception) {
+            android.util.Log.e("FCMTokenService", "Failed to save/update FCM token", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Get the current FCM token for this device
+     */
+    suspend fun getDeviceToken(context: Context): Result<FCMToken?> = withContext(Dispatchers.IO) {
+        try {
+            val deviceId = getDeviceId(context)
+            android.util.Log.d("FCMTokenService", "Getting FCM token for device: $deviceId")
+            
+            val tokenQuery = fcmTokensCollection
+                .whereEqualTo("deviceId", deviceId)
+                .whereEqualTo("isActive", true)
+                .limit(1)
+                .get()
+                .await()
+            
+            val token = tokenQuery.documents.firstOrNull()?.let { doc ->
+                FCMToken(
+                    id = doc.id,
+                    userId = doc.getString("userId") ?: "",
+                    token = doc.getString("token") ?: "",
+                    deviceId = doc.getString("deviceId") ?: "",
+                    deviceName = doc.getString("deviceName") ?: "",
+                    userDisplayName = doc.getString("userDisplayName") ?: "",
+                    platform = doc.getString("platform") ?: "android",
+                    appVersion = doc.getString("appVersion") ?: "",
+                    createdAt = doc.getLong("createdAt") ?: 0L,
+                    lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
+                    lastUsedAt = doc.getLong("lastUsedAt") ?: 0L,
+                    isActive = doc.getBoolean("isActive") ?: true,
+                    isPrimary = doc.getBoolean("isPrimary") ?: false
+                )
+            }
+            
+            if (token != null) {
+                android.util.Log.d("FCMTokenService", "Found FCM token for device: $deviceId, current user: ${token.userId}")
+            } else {
+                android.util.Log.d("FCMTokenService", "No FCM token found for device: $deviceId")
+            }
+            
+            Result.success(token)
+            
+        } catch (e: Exception) {
+            android.util.Log.e("FCMTokenService", "Failed to get device token", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Update the current user for this device's FCM token
+     */
+    suspend fun updateDeviceUser(userId: String, userDisplayName: String, context: Context): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val deviceId = getDeviceId(context)
+            android.util.Log.d("FCMTokenService", "Updating device user to: $userId ($userDisplayName)")
+            
+            val tokenQuery = fcmTokensCollection
+                .whereEqualTo("deviceId", deviceId)
+                .whereEqualTo("isActive", true)
+                .limit(1)
+                .get()
+                .await()
+            
+            if (tokenQuery.documents.isNotEmpty()) {
+                val doc = tokenQuery.documents.first()
+                val updateData = mapOf(
+                    "userId" to userId,
+                    "userDisplayName" to userDisplayName,
+                    "lastUsedAt" to System.currentTimeMillis(),
+                    "lastUpdatedAt" to System.currentTimeMillis()
+                )
+                
+                doc.reference.update(updateData).await()
+                android.util.Log.d("FCMTokenService", "Successfully updated device user to: $userId")
+                Result.success(Unit)
+            } else {
+                android.util.Log.w("FCMTokenService", "No FCM token found for device: $deviceId")
+                Result.failure(Exception("No FCM token found for device"))
             }
             
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to save FCM token for user: $userId", e)
+            android.util.Log.e("FCMTokenService", "Failed to update device user", e)
             Result.failure(e)
         }
     }
     
     /**
-     * Get all users' FCM tokens on a specific device
+     * Deactivate FCM token for this device (when user logs out and no one else uses the device)
      */
-    suspend fun getDeviceUserTokens(context: Context): Result<List<FCMToken>> {
-        return try {
-            val deviceId = getDeviceId(context)
-            android.util.Log.d("FCMTokenService", "Retrieving all user FCM tokens for device: $deviceId")
-            
-            val tokensQuery = fcmTokensCollection
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            val tokens = tokensQuery.documents.mapNotNull { doc ->
-                try {
-                    FCMToken(
-                        id = doc.id,
-                        userId = doc.getString("userId") ?: "",
-                        token = doc.getString("token") ?: "",
-                        deviceId = doc.getString("deviceId") ?: "",
-                        deviceName = doc.getString("deviceName") ?: "",
-                        userDisplayName = doc.getString("userDisplayName") ?: "",
-                        platform = doc.getString("platform") ?: "android",
-                        appVersion = doc.getString("appVersion") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: 0L,
-                        lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
-                        lastUsedAt = doc.getLong("lastUsedAt") ?: 0L,
-                        isActive = doc.getBoolean("isActive") ?: true,
-                        isPrimary = doc.getBoolean("isPrimary") ?: false
-                    )
-                } catch (e: Exception) {
-                    android.util.Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
-                    null
-                }
-            }.sortedByDescending { it.lastUsedAt } // Most recently used first
-            
-            android.util.Log.d("FCMTokenService", "Found ${tokens.size} user accounts on device: $deviceId")
-            Result.success(tokens)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to retrieve device user tokens", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Get all devices for a specific user
-     */
-    suspend fun getUserDeviceTokens(userId: String): Result<List<FCMToken>> {
-        return try {
-            android.util.Log.d("FCMTokenService", "Retrieving FCM tokens for user: $userId across all devices")
-            
-            val tokensQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            val tokens = tokensQuery.documents.mapNotNull { doc ->
-                try {
-                    FCMToken(
-                        id = doc.id,
-                        userId = doc.getString("userId") ?: "",
-                        token = doc.getString("token") ?: "",
-                        deviceId = doc.getString("deviceId") ?: "",
-                        deviceName = doc.getString("deviceName") ?: "",
-                        userDisplayName = doc.getString("userDisplayName") ?: "",
-                        platform = doc.getString("platform") ?: "android",
-                        appVersion = doc.getString("appVersion") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: 0L,
-                        lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
-                        lastUsedAt = doc.getLong("lastUsedAt") ?: 0L,
-                        isActive = doc.getBoolean("isActive") ?: true,
-                        isPrimary = doc.getBoolean("isPrimary") ?: false
-                    )
-                } catch (e: Exception) {
-                    android.util.Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
-                    null
-                }
-            }.sortedByDescending { it.lastUsedAt }
-            
-            android.util.Log.d("FCMTokenService", "Found ${tokens.size} devices for user: $userId")
-            Result.success(tokens)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to retrieve user device tokens", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Update last used time for a user's token on current device
-     */
-    suspend fun updateLastUsed(userId: String, context: Context): Result<Unit> {
-        return try {
+    suspend fun deactivateDeviceToken(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
             val deviceId = getDeviceId(context)
             
             val tokenQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
                 .whereEqualTo("deviceId", deviceId)
                 .whereEqualTo("isActive", true)
+                .limit(1)
                 .get()
                 .await()
             
-            for (doc in tokenQuery.documents) {
-                doc.reference.update("lastUsedAt", System.currentTimeMillis()).await()
+            if (tokenQuery.documents.isNotEmpty()) {
+                val doc = tokenQuery.documents.first()
+                doc.reference.update(mapOf(
+                    "isActive" to false,
+                    "lastUpdatedAt" to System.currentTimeMillis()
+                )).await()
+                
+                android.util.Log.d("FCMTokenService", "Deactivated FCM token for device: $deviceId")
+                Result.success(Unit)
+            } else {
+                android.util.Log.w("FCMTokenService", "No active FCM token found for device: $deviceId")
+                Result.success(Unit) // Not an error if already inactive
             }
             
-            android.util.Log.d("FCMTokenService", "Updated last used time for user: $userId on device: $deviceId")
+        } catch (e: Exception) {
+            android.util.Log.e("FCMTokenService", "Failed to deactivate device token", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Update last used timestamp for current device token
+     */
+    suspend fun updateLastUsed(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val deviceId = getDeviceId(context)
+            
+            val tokenQuery = fcmTokensCollection
+                .whereEqualTo("deviceId", deviceId)
+                .whereEqualTo("isActive", true)
+                .limit(1)
+                .get()
+                .await()
+            
+            if (tokenQuery.documents.isNotEmpty()) {
+                val doc = tokenQuery.documents.first()
+                doc.reference.update("lastUsedAt", System.currentTimeMillis()).await()
+                android.util.Log.d("FCMTokenService", "Updated last used time for device: $deviceId")
+            }
+            
             Result.success(Unit)
             
         } catch (e: Exception) {
@@ -209,94 +249,21 @@ class FCMTokenService @Inject constructor(
     }
     
     /**
-     * Set a user as primary on this device (only one primary user per device)
+     * Get count of active FCM tokens (should be 1 per device in this model)
      */
-    suspend fun setPrimaryUser(userId: String, context: Context): Result<Unit> {
-        return try {
-            val deviceId = getDeviceId(context)
-            
-            // First, remove primary status from all users on this device
-            val allUsersQuery = fcmTokensCollection
-                .whereEqualTo("deviceId", deviceId)
+    suspend fun getActiveTokenCount(): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val activeTokensQuery = fcmTokensCollection
                 .whereEqualTo("isActive", true)
-                .get()
-                .await()
+            val snapshot = activeTokensQuery.get().await()
             
-            val batch = firestore.batch()
+            val count = snapshot.size()
+            Log.d("FCMTokenService", "Total active FCM tokens: $count")
             
-            // Set all users to non-primary
-            for (doc in allUsersQuery.documents) {
-                batch.update(doc.reference, "isPrimary", false)
-            }
-            
-            // Set the specified user as primary
-            val userTokenQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            for (doc in userTokenQuery.documents) {
-                batch.update(doc.reference, "isPrimary", true)
-                batch.update(doc.reference, "lastUsedAt", System.currentTimeMillis())
-            }
-            
-            batch.commit().await()
-            
-            android.util.Log.d("FCMTokenService", "Set user: $userId as primary on device: $deviceId")
-            Result.success(Unit)
-            
+            Result.success(count)
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to set primary user", e)
+            Log.e("FCMTokenService", "Failed to get active token count", e)
             Result.failure(e)
-        }
-    }
-    
-    /**
-     * Deactivate FCM token for a specific user on current device (when user logs out)
-     */
-    suspend fun deactivateUserToken(userId: String, context: Context): Result<Unit> {
-        return try {
-            val deviceId = getDeviceId(context)
-            
-            val tokenQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            for (doc in tokenQuery.documents) {
-                doc.reference.update(mapOf(
-                    "isActive" to false,
-                    "lastUpdatedAt" to System.currentTimeMillis()
-                )).await()
-            }
-            
-            android.util.Log.d("FCMTokenService", "Deactivated FCM token for user: $userId on device: $deviceId")
-            Result.success(Unit)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to deactivate user token", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Check if this is the first user on the device (becomes primary)
-     */
-    private suspend fun checkIfPrimaryUser(deviceId: String): Boolean {
-        return try {
-            val existingUsersQuery = fcmTokensCollection
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            existingUsersQuery.isEmpty // If no existing users, this becomes primary
-        } catch (e: Exception) {
-            true // Default to primary if check fails
         }
     }
     
@@ -426,23 +393,22 @@ class FCMTokenService @Inject constructor(
     }
 
     /**
-     * Get count of active users on a device
+     * Get unique device identifier
      */
-    suspend fun getDeviceUserCount(context: Context): Result<Int> = withContext(Dispatchers.IO) {
-        try {
-            val deviceId = getDeviceId(context)
-            val activeTokensQuery = fcmTokensCollection
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-            val snapshot = activeTokensQuery.get().await()
-            
-            val count = snapshot.size()
-            Log.d("FCMTokenService", "Device $deviceId has $count active user accounts")
-            
-            Result.success(count)
-        } catch (e: Exception) {
-            Log.e("FCMTokenService", "Failed to get device user count", e)
-            Result.failure(e)
+    private fun getDeviceId(context: Context): String {
+        return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+    }
+    
+    /**
+     * Get human-readable device name
+     */
+    private fun getDeviceName(context: Context): String {
+        val manufacturer = android.os.Build.MANUFACTURER
+        val model = android.os.Build.MODEL
+        return if (model.startsWith(manufacturer, ignoreCase = true)) {
+            model.replaceFirstChar { it.uppercase() }
+        } else {
+            "${manufacturer.replaceFirstChar { it.uppercase() }} $model"
         }
     }
     

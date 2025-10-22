@@ -482,13 +482,13 @@ fun FCMTokenTestTab(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "FCM Token Multi-User Testing",
+                        text = "FCM Token Device Testing",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Test FCM token management for multiple users on a single device",
+                        text = "Test single FCM token per device with user switching",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -577,44 +577,17 @@ fun FCMTokenTestTab(
                             enabled = userId.isNotBlank() && userDisplayName.isNotBlank() && fcmToken.isNotBlank(),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Add User")
+                            Text("Add/Update Token")
                         }
                         
                         Button(
                             onClick = {
-                                viewModel.testSetPrimaryUser(userId, context)
+                                viewModel.testSwitchUser(userId, userDisplayName, context)
                             },
-                            enabled = userId.isNotBlank(),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Set Primary")
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                viewModel.testSwitchUser(userId, context)
-                            },
-                            enabled = userId.isNotBlank(),
+                            enabled = userId.isNotBlank() && userDisplayName.isNotBlank(),
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Switch User")
-                        }
-                        
-                        Button(
-                            onClick = {
-                                viewModel.testRemoveUser(userId, context)
-                            },
-                            enabled = userId.isNotBlank(),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Remove User")
                         }
                     }
                 }
@@ -641,20 +614,20 @@ fun FCMTokenTestTab(
                     ) {
                         Button(
                             onClick = {
-                                viewModel.testGetDeviceUsers(context)
+                                viewModel.testGetDeviceToken(context)
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Get Device Users")
+                            Text("Get Device Token")
                         }
                         
                         Button(
                             onClick = {
-                                viewModel.testGetPrimaryUser(context)
+                                viewModel.testGetActiveTokenCount()
                             },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Get Primary User")
+                            Text("Get Token Count")
                         }
                     }
                     
@@ -662,11 +635,15 @@ fun FCMTokenTestTab(
                     
                     Button(
                         onClick = {
-                            viewModel.testGetUserCount(context)
+                            viewModel.testDeactivateToken(context)
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
                     ) {
-                        Text("Get User Count")
+                        Text("Deactivate Device Token")
                     }
                 }
             }
