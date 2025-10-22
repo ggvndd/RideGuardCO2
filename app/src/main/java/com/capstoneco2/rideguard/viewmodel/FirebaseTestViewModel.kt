@@ -279,7 +279,7 @@ class FirebaseTestViewModel @Inject constructor(
     fun testAddFCMToken(userId: String, userDisplayName: String, fcmToken: String, context: Context) {
         viewModelScope.launch {
             try {
-                addFCMTokenResult("🔄 Adding/updating FCM token for user: $userId ($userDisplayName)")
+                addFCMTokenResult("🔄 Adding FCM token for user: $userId ($userDisplayName)")
                 
                 val result = fcmTokenService.saveOrUpdateFCMToken(
                     userId = userId,
@@ -289,13 +289,12 @@ class FirebaseTestViewModel @Inject constructor(
                 )
                 
                 if (result.isSuccess) {
-                    addFCMTokenResult("✅ Successfully saved/updated FCM token for user: $userId")
+                    addFCMTokenResult("✅ Successfully registered user account: $userId")
                     addFCMTokenResult("   Display Name: $userDisplayName")
                     addFCMTokenResult("   FCM Token: ${fcmToken.take(20)}...")
-                    addFCMTokenResult("   Document ID: ${result.getOrNull()}")
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                    addFCMTokenResult("❌ Failed to save FCM token: $error")
+                    addFCMTokenResult("❌ Failed to register user: $error")
                 }
             } catch (e: Exception) {
                 addFCMTokenResult("❌ Exception: ${e.message}")
@@ -303,16 +302,34 @@ class FirebaseTestViewModel @Inject constructor(
         }
     }
     
-    fun testSwitchUser(userId: String, userDisplayName: String, context: Context) {
+    fun testSetPrimaryUser(userId: String, context: Context) {
         viewModelScope.launch {
             try {
-                addFCMTokenResult("🔄 Switching device to user: $userId ($userDisplayName)")
+                addFCMTokenResult("🔄 Setting primary user: $userId")
                 
-                val result = fcmTokenService.updateDeviceUser(userId, userDisplayName, context)
+                val result = fcmTokenService.setPrimaryUser(userId, context)
                 
                 if (result.isSuccess) {
-                    addFCMTokenResult("✅ Successfully switched device to user: $userId")
-                    addFCMTokenResult("   New user: $userDisplayName")
+                    addFCMTokenResult("✅ Successfully set primary user: $userId")
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                    addFCMTokenResult("❌ Failed to set primary user: $error")
+                }
+            } catch (e: Exception) {
+                addFCMTokenResult("❌ Exception: ${e.message}")
+            }
+        }
+    }
+    
+    fun testSwitchUser(userId: String, context: Context) {
+        viewModelScope.launch {
+            try {
+                addFCMTokenResult("🔄 Switching to user: $userId")
+                
+                val result = fcmTokenService.updateLastUsed(userId, context)
+                
+                if (result.isSuccess) {
+                    addFCMTokenResult("✅ Successfully switched to user: $userId")
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
                     addFCMTokenResult("❌ Failed to switch user: $error")
@@ -323,28 +340,49 @@ class FirebaseTestViewModel @Inject constructor(
         }
     }
     
-    fun testGetDeviceToken(context: Context) {
+    fun testRemoveUser(userId: String, context: Context) {
         viewModelScope.launch {
             try {
-                addFCMTokenResult("🔄 Getting current device token...")
+                addFCMTokenResult("🔄 Removing user: $userId")
                 
-                val result = fcmTokenService.getDeviceToken(context)
+                val result = fcmTokenService.deactivateUserToken(userId, context)
                 
                 if (result.isSuccess) {
-                    val token = result.getOrNull()
-                    if (token != null) {
-                        addFCMTokenResult("✅ Device token found:")
-                        addFCMTokenResult("   Current User: ${token.userDisplayName} (${token.userId})")
-                        addFCMTokenResult("   Device: ${token.deviceName}")
-                        addFCMTokenResult("   Last Used: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(token.lastUsedAt))}")
-                        addFCMTokenResult("   Token: ${token.token.take(20)}...")
-                        addFCMTokenResult("   Document ID: ${token.id}")
-                    } else {
-                        addFCMTokenResult("⚠️ No FCM token found for this device")
+                    addFCMTokenResult("✅ Successfully removed user: $userId")
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                    addFCMTokenResult("❌ Failed to remove user: $error")
+                }
+            } catch (e: Exception) {
+                addFCMTokenResult("❌ Exception: ${e.message}")
+            }
+        }
+    }
+    
+    fun testGetDeviceUsers(context: Context) {
+        viewModelScope.launch {
+            try {
+                addFCMTokenResult("🔄 Getting all device users...")
+                
+                val result = fcmTokenService.getDeviceUserTokens(context)
+                
+                if (result.isSuccess) {
+                    val users = result.getOrNull() ?: emptyList()
+                    addFCMTokenResult("✅ Found ${users.size} users on this device:")
+                    
+                    users.forEach { user ->
+                        addFCMTokenResult("   - ${user.userDisplayName} (${user.userId})")
+                        addFCMTokenResult("     Primary: ${user.isPrimary}")
+                        addFCMTokenResult("     Last Used: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(user.lastUsedAt))}")
+                        addFCMTokenResult("     Token: ${user.token.take(20)}...")
+                    }
+                    
+                    if (users.isEmpty()) {
+                        addFCMTokenResult("   No users found on this device")
                     }
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                    addFCMTokenResult("❌ Failed to get device token: $error")
+                    addFCMTokenResult("❌ Failed to get device users: $error")
                 }
             } catch (e: Exception) {
                 addFCMTokenResult("❌ Exception: ${e.message}")
@@ -352,18 +390,27 @@ class FirebaseTestViewModel @Inject constructor(
         }
     }
     
-    fun testDeactivateToken(context: Context) {
+    fun testGetPrimaryUser(context: Context) {
         viewModelScope.launch {
             try {
-                addFCMTokenResult("🔄 Deactivating device token...")
+                addFCMTokenResult("🔄 Getting primary user...")
                 
-                val result = fcmTokenService.deactivateDeviceToken(context)
+                val result = fcmTokenService.getPrimaryUser(context)
                 
                 if (result.isSuccess) {
-                    addFCMTokenResult("✅ Successfully deactivated device token")
+                    val primaryUser = result.getOrNull()
+                    if (primaryUser != null) {
+                        addFCMTokenResult("✅ Primary user found:")
+                        addFCMTokenResult("   Display Name: ${primaryUser.userDisplayName}")
+                        addFCMTokenResult("   User ID: ${primaryUser.userId}")
+                        addFCMTokenResult("   Device: ${primaryUser.deviceName}")
+                        addFCMTokenResult("   Last Used: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(primaryUser.lastUsedAt))}")
+                    } else {
+                        addFCMTokenResult("⚠️ No primary user found on this device")
+                    }
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                    addFCMTokenResult("❌ Failed to deactivate token: $error")
+                    addFCMTokenResult("❌ Failed to get primary user: $error")
                 }
             } catch (e: Exception) {
                 addFCMTokenResult("❌ Exception: ${e.message}")
@@ -371,19 +418,19 @@ class FirebaseTestViewModel @Inject constructor(
         }
     }
     
-    fun testGetActiveTokenCount() {
+    fun testGetUserCount(context: Context) {
         viewModelScope.launch {
             try {
-                addFCMTokenResult("🔄 Getting active token count...")
+                addFCMTokenResult("🔄 Getting user count...")
                 
-                val result = fcmTokenService.getActiveTokenCount()
+                val result = fcmTokenService.getDeviceUserCount(context)
                 
                 if (result.isSuccess) {
                     val count = result.getOrNull() ?: 0
-                    addFCMTokenResult("✅ Total active FCM tokens: $count")
+                    addFCMTokenResult("✅ Device has $count user accounts")
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                    addFCMTokenResult("❌ Failed to get token count: $error")
+                    addFCMTokenResult("❌ Failed to get user count: $error")
                 }
             } catch (e: Exception) {
                 addFCMTokenResult("❌ Exception: ${e.message}")
