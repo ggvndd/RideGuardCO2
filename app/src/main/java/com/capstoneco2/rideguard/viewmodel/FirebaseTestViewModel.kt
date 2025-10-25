@@ -171,6 +171,31 @@ class FirebaseTestViewModel @Inject constructor(
         }
     }
     
+    fun testCleanupTokens(context: Context) {
+        viewModelScope.launch {
+            try {
+                addFCMTokenResult("🔄 Testing smart FCM token cleanup...")
+                addFCMTokenResult("   (Only cleans current user's old tokens - safe for multi-user)")
+                
+                val result = fcmTokenService.cleanupInactiveFCMTokens(context)
+                
+                if (result.isSuccess) {
+                    val count = result.getOrNull() ?: 0
+                    if (count > 0) {
+                        addFCMTokenResult("✅ Smart cleanup completed: $count old tokens deactivated")
+                    } else {
+                        addFCMTokenResult("✅ Smart cleanup completed: No old tokens found to clean")
+                    }
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                    addFCMTokenResult("❌ Smart cleanup failed: $error")
+                }
+            } catch (e: Exception) {
+                addFCMTokenResult("❌ Exception during smart cleanup: ${e.message}")
+            }
+        }
+    }
+    
     // RideGuardId Service Tests
     
     fun connectUserToDevice(deviceId: String, userId: String) {

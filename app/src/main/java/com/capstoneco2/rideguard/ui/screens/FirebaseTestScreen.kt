@@ -719,6 +719,18 @@ fun FCMTokenTestTab(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Button(
+                        onClick = { viewModel.testCleanupTokens(context) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Text("Test Cleanup Old Tokens")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Button(
                         onClick = { viewModel.clearFCMTokenTestResult() },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(

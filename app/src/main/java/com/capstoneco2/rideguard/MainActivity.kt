@@ -131,8 +131,7 @@ class MainActivity : ComponentActivity() {
                         userId = currentUserId,
                         userDisplayName = getCurrentUserDisplayName() ?: "Unknown User",
                         token = token,
-                        context = this@MainActivity,
-                        appVersion = getAppVersion()
+                        context = this@MainActivity
                     )
                     
                     if (result.isSuccess) {
@@ -230,7 +229,7 @@ class MainActivity : ComponentActivity() {
                 if (userId != null) {
                     Log.d(TAG, "Performing periodic FCM token cleanup (with safety checks)")
                     
-                    val result = fcmTokenService.cleanupInactiveFCMTokens()
+                    val result = fcmTokenService.cleanupInactiveFCMTokens(this@MainActivity)
                     if (result.isSuccess) {
                         val deletedCount = result.getOrNull() ?: 0
                         Log.i(TAG, "Periodic cleanup completed: $deletedCount inactive tokens removed")

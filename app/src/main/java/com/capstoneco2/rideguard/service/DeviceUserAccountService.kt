@@ -40,8 +40,7 @@ class DeviceUserAccountService @Inject constructor(
                 userId = userId,
                 userDisplayName = userDisplayName,
                 token = fcmToken,
-                context = context,
-                appVersion = appVersion
+                context = context
             )
             
             if (result.isSuccess) {

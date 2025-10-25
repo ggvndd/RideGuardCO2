@@ -2,6 +2,7 @@ package com.capstoneco2.rideguard.service
 
 import android.content.Context
 import android.provider.Settings
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.Timestamp
 import com.capstoneco2.rideguard.data.FCMToken
@@ -27,65 +28,74 @@ class FCMTokenService @Inject constructor(
     private val fcmTokensCollection = db.collection("fcm_tokens")
     
     /**
-     * Save or update FCM token for a user account on a device
-     * Each user account gets its own FCM token entry on the same device
+     * Save or update FCM token for a user account on this device (multi-user per device)
      */
     suspend fun saveOrUpdateFCMToken(
         userId: String,
         userDisplayName: String,
         token: String,
-        context: Context,
-        appVersion: String = "1.0"
-    ): Result<String> {
-        return try {
-            android.util.Log.d("FCMTokenService", "Saving FCM token for user: $userId on device")
-            
+        context: Context
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
             val deviceId = getDeviceId(context)
             val deviceName = getDeviceName(context)
+            val appVersion = getAppVersion(context)
+            val currentTime = System.currentTimeMillis()
             
-            // Check if token already exists for this specific user on this device
+            Log.d("FCMTokenService", "Saving/updating FCM token for multi-user device")
+            Log.d("FCMTokenService", "User: $userId, Device: $deviceId, Token: ${token.take(20)}...")
+            
+            // Look for existing token document for this specific user-device-token combination
             val existingTokenQuery = fcmTokensCollection
                 .whereEqualTo("userId", userId)
                 .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
+                .whereEqualTo("token", token)
+                .limit(1)
             
-            if (!existingTokenQuery.isEmpty) {
-                // Update existing token for this user
-                val existingDoc = existingTokenQuery.documents.first()
-                val updateData = mapOf(
-                    "token" to token,
-                    "lastUpdatedAt" to System.currentTimeMillis(),
-                    "lastUsedAt" to System.currentTimeMillis(),
-                    "appVersion" to appVersion,
-                    "userDisplayName" to userDisplayName
+            val existingTokenSnapshot = existingTokenQuery.get().await()
+            
+            if (!existingTokenSnapshot.isEmpty) {
+                // Update existing document
+                val existingDoc = existingTokenSnapshot.documents.first()
+                val updates = mapOf(
+                    "userDisplayName" to userDisplayName,
+                    "lastUpdatedAt" to currentTime,
+                    "lastUsedAt" to currentTime,
+                    "isActive" to true,
+                    "appVersion" to appVersion
                 )
                 
-                existingDoc.reference.update(updateData).await()
-                android.util.Log.d("FCMTokenService", "Updated existing FCM token for user: $userId on device: $deviceId")
-                Result.success(existingDoc.id)
+                existingDoc.reference.update(updates).await()
+                Log.i("FCMTokenService", "Updated existing FCM token for user $userId: ${existingDoc.id}")
+                return@withContext Result.success(existingDoc.id)
             } else {
-                // Create new token record for this user account
-                val isPrimary = checkIfPrimaryUser(deviceId)
+                // Check if this is the first user on this device to set as primary
+                val deviceUserCount = getDeviceUserCount(context).getOrNull() ?: 0
+                val isPrimary = deviceUserCount == 0
                 
-                val fcmToken = FCMToken(
-                    userId = userId,
-                    token = token,
-                    deviceId = deviceId,
-                    deviceName = deviceName,
-                    userDisplayName = userDisplayName,
-                    appVersion = appVersion,
-                    isPrimary = isPrimary
+                // Create new token document for this user
+                val tokenData = mapOf(
+                    "userId" to userId,
+                    "userDisplayName" to userDisplayName,
+                    "token" to token,
+                    "deviceId" to deviceId,
+                    "deviceName" to deviceName,
+                    "platform" to "android",
+                    "appVersion" to appVersion,
+                    "createdAt" to currentTime,
+                    "lastUpdatedAt" to currentTime,
+                    "lastUsedAt" to currentTime,
+                    "isActive" to true,
+                    "isPrimary" to isPrimary
                 )
                 
-                val docRef = fcmTokensCollection.add(fcmToken.toMap()).await()
-                android.util.Log.d("FCMTokenService", "Created new FCM token record for user: $userId on device: $deviceId (Primary: $isPrimary)")
-                Result.success(docRef.id)
+                val newTokenRef = fcmTokensCollection.add(tokenData).await()
+                Log.i("FCMTokenService", "Created new FCM token for user $userId: ${newTokenRef.id} (primary: $isPrimary)")
+                return@withContext Result.success(newTokenRef.id)
             }
             
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to save FCM token for user: $userId", e)
+            Log.e("FCMTokenService", "Failed to save/update FCM token", e)
             Result.failure(e)
         }
     }
@@ -208,80 +218,7 @@ class FCMTokenService @Inject constructor(
         }
     }
     
-    /**
-     * Set a user as primary on this device (only one primary user per device)
-     */
-    suspend fun setPrimaryUser(userId: String, context: Context): Result<Unit> {
-        return try {
-            val deviceId = getDeviceId(context)
-            
-            // First, remove primary status from all users on this device
-            val allUsersQuery = fcmTokensCollection
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            val batch = firestore.batch()
-            
-            // Set all users to non-primary
-            for (doc in allUsersQuery.documents) {
-                batch.update(doc.reference, "isPrimary", false)
-            }
-            
-            // Set the specified user as primary
-            val userTokenQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            for (doc in userTokenQuery.documents) {
-                batch.update(doc.reference, "isPrimary", true)
-                batch.update(doc.reference, "lastUsedAt", System.currentTimeMillis())
-            }
-            
-            batch.commit().await()
-            
-            android.util.Log.d("FCMTokenService", "Set user: $userId as primary on device: $deviceId")
-            Result.success(Unit)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to set primary user", e)
-            Result.failure(e)
-        }
-    }
-    
-    /**
-     * Deactivate FCM token for a specific user on current device (when user logs out)
-     */
-    suspend fun deactivateUserToken(userId: String, context: Context): Result<Unit> {
-        return try {
-            val deviceId = getDeviceId(context)
-            
-            val tokenQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            for (doc in tokenQuery.documents) {
-                doc.reference.update(mapOf(
-                    "isActive" to false,
-                    "lastUpdatedAt" to System.currentTimeMillis()
-                )).await()
-            }
-            
-            android.util.Log.d("FCMTokenService", "Deactivated FCM token for user: $userId on device: $deviceId")
-            Result.success(Unit)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to deactivate user token", e)
-            Result.failure(e)
-        }
-    }
+
     
     /**
      * Check if this is the first user on the device (becomes primary)
@@ -321,59 +258,80 @@ class FCMTokenService @Inject constructor(
     }
 
     /**
-     * Clean up inactive FCM tokens (older than 30 days)
-     * Uses client-side filtering to avoid complex Firestore indexes
+     * Get app version name
      */
-    suspend fun cleanupInactiveFCMTokens(): Result<Int> = withContext(Dispatchers.IO) {
+    private fun getAppVersion(context: Context): String {
+        return try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.versionName ?: "Unknown"
+        } catch (e: Exception) {
+            "Unknown"
+        }
+    }
+
+    /**
+     * Smart cleanup: Only clean up current user's old tokens to avoid permission issues
+     */
+    suspend fun cleanupInactiveFCMTokens(context: Context? = null): Result<Int> = withContext(Dispatchers.IO) {
         try {
-            Log.d("FCMTokenService", "Starting cleanup of inactive FCM tokens")
-            
-            // First check if fcm_tokens collection exists and has any documents
-            val collectionCheck = fcmTokensCollection.limit(1).get().await()
-            if (collectionCheck.isEmpty) {
-                Log.d("FCMTokenService", "No FCM tokens found in collection, skipping cleanup")
+            if (context == null) {
+                Log.d("FCMTokenService", "No context provided for cleanup, skipping")
                 return@withContext Result.success(0)
             }
+            
+            // Only cleanup current user's tokens to avoid permission issues
+            val currentUserId = getCurrentUserId(context)
+            if (currentUserId == null) {
+                Log.d("FCMTokenService", "No current user, skipping cleanup")
+                return@withContext Result.success(0)
+            }
+            
+            Log.d("FCMTokenService", "Starting smart cleanup for current user: $currentUserId")
             
             val thirtyDaysAgo = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L
+            val deviceId = getDeviceId(context)
             
-            // Get all active tokens (simple query, no composite index needed)
-            val activeTokensQuery = fcmTokensCollection
+            Log.d("FCMTokenService", "Looking for tokens older than 30 days for user $currentUserId on device $deviceId")
+            
+            // Only look at current user's tokens on this device
+            val userTokensQuery = fcmTokensCollection
+                .whereEqualTo("userId", currentUserId)
+                .whereEqualTo("deviceId", deviceId)
                 .whereEqualTo("isActive", true)
             
-            val activeTokensSnapshot = activeTokensQuery.get().await()
+            val userTokensSnapshot = userTokensQuery.get().await()
             
-            if (activeTokensSnapshot.isEmpty) {
-                Log.d("FCMTokenService", "No active FCM tokens found, skipping cleanup")
-                return@withContext Result.success(0)
-            }
-            
-            var deletedCount = 0
-            val batch = firestore.batch()
-            
-            // Filter old tokens on the client side to avoid composite index requirement
-            for (document in activeTokensSnapshot.documents) {
-                val lastUsedAt = document.getLong("lastUsedAt") ?: 0L
+            var cleanedCount = 0
+            for (doc in userTokensSnapshot.documents) {
+                val lastUsedAt = doc.getLong("lastUsedAt") ?: 0L
                 
-                // Check if token is older than 30 days
                 if (lastUsedAt < thirtyDaysAgo) {
-                    batch.update(document.reference, "isActive", false)
-                    deletedCount++
-                    Log.d("FCMTokenService", "Marking old FCM token as inactive: ${document.id} (last used: ${Date(lastUsedAt)})")
+                    doc.reference.update("isActive", false).await()
+                    cleanedCount++
+                    Log.d("FCMTokenService", "Deactivated old token for current user: ${doc.id}")
                 }
             }
             
-            if (deletedCount > 0) {
-                batch.commit().await()
-                Log.i("FCMTokenService", "Successfully deactivated $deletedCount old FCM tokens")
-            } else {
-                Log.d("FCMTokenService", "No old FCM tokens found for cleanup")
-            }
+            Log.i("FCMTokenService", "Smart cleanup completed: $cleanedCount tokens deactivated")
+            Result.success(cleanedCount)
             
-            Result.success(deletedCount)
         } catch (e: Exception) {
-            Log.e("FCMTokenService", "Failed to cleanup inactive FCM tokens", e)
+            Log.e("FCMTokenService", "Failed smart cleanup", e)
             Result.failure(e)
+        }
+    }
+    
+    private fun getCurrentUserId(context: Context): String? {
+        return try {
+            // Get current user from Firebase Auth (same as MainActivity)
+            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            val userId = currentUser?.uid
+            
+            Log.d("FCMTokenService", "Retrieved current user ID from Firebase Auth: $userId")
+            userId
+        } catch (e: Exception) {
+            Log.w("FCMTokenService", "Failed to get current user ID from Firebase Auth", e)
+            null
         }
     }
     
@@ -481,6 +439,113 @@ class FCMTokenService @Inject constructor(
             Result.success(primaryUser)
         } catch (e: Exception) {
             android.util.Log.e("FCMTokenService", "Failed to get primary user", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Set a user as the primary user on this device
+     */
+    suspend fun setPrimaryUser(userId: String, context: Context): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val deviceId = getDeviceId(context)
+            Log.d("FCMTokenService", "Setting primary user: $userId on device: $deviceId")
+            
+            val batch = firestore.batch()
+            
+            // First, remove primary status from all users on this device
+            val allDeviceTokensQuery = fcmTokensCollection
+                .whereEqualTo("deviceId", deviceId)
+                .whereEqualTo("isActive", true)
+            
+            val allTokensSnapshot = allDeviceTokensQuery.get().await()
+            
+            for (doc in allTokensSnapshot.documents) {
+                batch.update(doc.reference, "isPrimary", false)
+            }
+            
+            // Then set the specified user as primary
+            val userTokenQuery = fcmTokensCollection
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("deviceId", deviceId)
+                .whereEqualTo("isActive", true)
+                .limit(1)
+            
+            val userTokenSnapshot = userTokenQuery.get().await()
+            
+            if (!userTokenSnapshot.isEmpty) {
+                val userDoc = userTokenSnapshot.documents.first()
+                batch.update(userDoc.reference, "isPrimary", true)
+                batch.update(userDoc.reference, "lastUsedAt", System.currentTimeMillis())
+            }
+            
+            batch.commit().await()
+            Log.i("FCMTokenService", "Successfully set $userId as primary user on device $deviceId")
+            
+            Result.success(Unit)
+            
+        } catch (e: Exception) {
+            Log.e("FCMTokenService", "Failed to set primary user", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Deactivate a user's FCM token on this device
+     */
+    suspend fun deactivateUserToken(userId: String, context: Context): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val deviceId = getDeviceId(context)
+            Log.d("FCMTokenService", "Deactivating FCM token for user: $userId on device: $deviceId")
+            
+            val userTokenQuery = fcmTokensCollection
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("deviceId", deviceId)
+                .whereEqualTo("isActive", true)
+            
+            val userTokenSnapshot = userTokenQuery.get().await()
+            
+            val batch = firestore.batch()
+            var deactivatedCount = 0
+            
+            for (doc in userTokenSnapshot.documents) {
+                batch.update(doc.reference, "isActive", false)
+                batch.update(doc.reference, "lastUpdatedAt", System.currentTimeMillis())
+                deactivatedCount++
+            }
+            
+            if (deactivatedCount > 0) {
+                batch.commit().await()
+                Log.i("FCMTokenService", "Deactivated $deactivatedCount FCM tokens for user $userId")
+                
+                // If this was the primary user, set another user as primary
+                val wasPrimary = userTokenSnapshot.documents.any { 
+                    it.getBoolean("isPrimary") ?: false 
+                }
+                
+                if (wasPrimary) {
+                    // Find another active user to make primary
+                    val remainingUsersQuery = fcmTokensCollection
+                        .whereEqualTo("deviceId", deviceId)
+                        .whereEqualTo("isActive", true)
+                        .limit(1)
+                    
+                    val remainingUsersSnapshot = remainingUsersQuery.get().await()
+                    
+                    if (!remainingUsersSnapshot.isEmpty) {
+                        val newPrimaryDoc = remainingUsersSnapshot.documents.first()
+                        newPrimaryDoc.reference.update("isPrimary", true).await()
+                        Log.i("FCMTokenService", "Set new primary user: ${newPrimaryDoc.getString("userId")}")
+                    }
+                }
+            } else {
+                Log.w("FCMTokenService", "No active tokens found for user $userId on device $deviceId")
+            }
+            
+            Result.success(Unit)
+            
+        } catch (e: Exception) {
+            Log.e("FCMTokenService", "Failed to deactivate user token", e)
             Result.failure(e)
         }
     }
