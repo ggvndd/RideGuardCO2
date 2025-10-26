@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -23,6 +24,9 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +79,24 @@ fun SignUpPage(
     var errorMessage by remember { mutableStateOf("") }
     
     val authState by authViewModel.authState.collectAsState()
+    val focusManager = LocalFocusManager.current
+    
+    val performSignUp = {
+        when {
+            username.isEmpty() -> errorMessage = "Username is required"
+            phoneNumber.isEmpty() -> errorMessage = "Phone number is required"  
+            email.isEmpty() -> errorMessage = "Email is required"
+            password.isEmpty() -> errorMessage = "Password is required"
+            confirmPassword.isEmpty() -> errorMessage = "Please confirm your password"
+            password != confirmPassword -> errorMessage = "Passwords do not match"
+            password.length < 6 -> errorMessage = "Password must be at least 6 characters"
+            !email.contains("@") -> errorMessage = "Please enter a valid email"
+            else -> {
+                errorMessage = ""
+                authViewModel.signUp(email, password, username, phoneNumber)
+            }
+        }
+    }
     
     // Navigate to main app when sign up is successful
     LaunchedEffect(authState.isSignedIn) {
@@ -102,9 +124,11 @@ fun SignUpPage(
         Spacer(modifier = Modifier.height(32.dp))
         
         Image(
-            painter = painterResource(id = R.drawable.helmet_logo),
-            contentDescription = "RideGuard Helmet Logo",
-            modifier = Modifier.size(80.dp),
+            painter = painterResource(id = R.drawable.rideguardlogo),
+            contentDescription = "RideGuard Logo",
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(80.dp),
             contentScale = ContentScale.Fit
         )
         
@@ -137,7 +161,9 @@ fun SignUpPage(
             label = "Username",
             placeholder = "Enter your username",
             icon = Icons.Default.Person,
-            keyboardType = KeyboardType.Text
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Next,
+            onKeyboardAction = { focusManager.moveFocus(FocusDirection.Down) }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -152,7 +178,9 @@ fun SignUpPage(
             label = "Phone Number",
             placeholder = "Enter your phone number",
             icon = Icons.Default.Phone,
-            keyboardType = KeyboardType.Phone
+            keyboardType = KeyboardType.Phone,
+            imeAction = ImeAction.Next,
+            onKeyboardAction = { focusManager.moveFocus(FocusDirection.Down) }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -167,7 +195,9 @@ fun SignUpPage(
             label = "Email",
             placeholder = "Enter your email",
             icon = Icons.Default.Email,
-            keyboardType = KeyboardType.Email
+            keyboardType = KeyboardType.Email,
+            imeAction = ImeAction.Next,
+            onKeyboardAction = { focusManager.moveFocus(FocusDirection.Down) }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -182,7 +212,9 @@ fun SignUpPage(
             label = "Password",
             placeholder = "Enter your password",
             passwordVisible = passwordVisible,
-            onPasswordVisibilityChange = { passwordVisible = !passwordVisible }
+            onPasswordVisibilityChange = { passwordVisible = !passwordVisible },
+            imeAction = ImeAction.Next,
+            onKeyboardAction = { focusManager.moveFocus(FocusDirection.Down) }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -197,7 +229,12 @@ fun SignUpPage(
             label = "Confirm Password",
             placeholder = "Confirm your password",
             passwordVisible = confirmPasswordVisible,
-            onPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible }
+            onPasswordVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible },
+            imeAction = ImeAction.Done,
+            onKeyboardAction = { 
+                focusManager.clearFocus()
+                performSignUp()
+            }
         )
         
         // Error Message
@@ -219,22 +256,7 @@ fun SignUpPage(
         // Sign Up Button
         PrimaryButton(
             text = "Sign Up",
-            onClick = {
-                when {
-                    username.isEmpty() -> errorMessage = "Username is required"
-                    phoneNumber.isEmpty() -> errorMessage = "Phone number is required"
-                    email.isEmpty() -> errorMessage = "Email is required"
-                    password.isEmpty() -> errorMessage = "Password is required"
-                    confirmPassword.isEmpty() -> errorMessage = "Please confirm your password"
-                    password != confirmPassword -> errorMessage = "Passwords do not match"
-                    password.length < 6 -> errorMessage = "Password must be at least 6 characters"
-                    !email.contains("@") -> errorMessage = "Please enter a valid email"
-                    else -> {
-                        errorMessage = ""
-                        authViewModel.signUp(email, password, username, phoneNumber)
-                    }
-                }
-            },
+            onClick = performSignUp,
             modifier = Modifier.fillMaxWidth(),
             enabled = !authState.isLoading
         )
@@ -273,7 +295,9 @@ private fun IconTextField(
     label: String,
     placeholder: String,
     icon: ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    imeAction: ImeAction = ImeAction.Next,
+    onKeyboardAction: () -> Unit = {}
 ) {
     Column {
         BodyText(
@@ -303,7 +327,14 @@ private fun IconTextField(
             },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                imeAction = imeAction
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { onKeyboardAction() },
+                onDone = { onKeyboardAction() }
+            ),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -324,7 +355,9 @@ private fun IconPasswordTextField(
     label: String,
     placeholder: String,
     passwordVisible: Boolean,
-    onPasswordVisibilityChange: () -> Unit
+    onPasswordVisibilityChange: () -> Unit,
+    imeAction: ImeAction = ImeAction.Next,
+    onKeyboardAction: () -> Unit = {}
 ) {
     Column {
         BodyText(
@@ -363,7 +396,14 @@ private fun IconPasswordTextField(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = imeAction
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { onKeyboardAction() },
+                onDone = { onKeyboardAction() }
+            ),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,

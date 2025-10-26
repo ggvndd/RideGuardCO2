@@ -112,7 +112,6 @@ fun SettingsScreen(
             // User Profile Card - Horizontal layout, left aligned
             UserProfileCard(
                 userName = userName,
-                onEditClick = { /* Handle edit profile */ },
                 onSignOutClick = {
                     authViewModel.signOut()
                     onLogoutSuccess()
@@ -443,7 +442,6 @@ fun SettingsScreen(
 @Composable
 private fun UserProfileCard(
     userName: String,
-    onEditClick: () -> Unit,
     onSignOutClick: () -> Unit
 ) {
     Column {
@@ -496,15 +494,6 @@ private fun UserProfileCard(
         }
         
         Spacer(modifier = Modifier.height(24.dp))
-        
-        // Edit Button
-        PrimaryButton(
-            text = "Edit",
-            onClick = onEditClick,
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
         
         // Sign Out Button
         SecondaryButton(

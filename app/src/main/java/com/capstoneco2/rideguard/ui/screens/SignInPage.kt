@@ -15,12 +15,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -72,6 +76,17 @@ fun SignInPage(
     var errorMessage by remember { mutableStateOf("") }
     
     val authState by authViewModel.authState.collectAsState()
+    val focusManager = LocalFocusManager.current
+    
+    val performSignIn = {
+        when {
+            username.isEmpty() -> errorMessage = "Email is required"
+            password.isEmpty() -> errorMessage = "Password is required"
+            else -> {
+                authViewModel.signIn(username, password)
+            }
+        }
+    }
     
     // Navigate to main app when sign in is successful
     LaunchedEffect(authState.isSignedIn) {
@@ -100,9 +115,11 @@ fun SignInPage(
         Spacer(modifier = Modifier.height(60.dp))
         
         Image(
-            painter = painterResource(id = R.drawable.helmet_logo),
-            contentDescription = "RideGuard Helmet Logo",
-            modifier = Modifier.size(80.dp),
+            painter = painterResource(id = R.drawable.rideguardlogo),
+            contentDescription = "RideGuard Logo",
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(80.dp),
             contentScale = ContentScale.Fit
         )
         
@@ -148,7 +165,13 @@ fun SignInPage(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email,
+                imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+            ),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -193,7 +216,16 @@ fun SignInPage(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { 
+                        focusManager.clearFocus()
+                        performSignIn()
+                    }
+                ),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -257,15 +289,7 @@ fun SignInPage(
             // Show normal login button
             PrimaryButton(
                 text = "Login",
-                onClick = {
-                    when {
-                        username.isEmpty() -> errorMessage = "Email is required"
-                        password.isEmpty() -> errorMessage = "Password is required"
-                        else -> {
-                            authViewModel.signIn(username, password)
-                        }
-                    }
-                },
+                onClick = performSignIn,
                 modifier = Modifier.fillMaxWidth()
             )
         }

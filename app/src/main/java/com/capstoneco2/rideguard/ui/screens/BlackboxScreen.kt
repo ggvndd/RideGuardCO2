@@ -32,6 +32,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -925,7 +927,7 @@ fun StorageSettingsSection(
                             MaterialTheme.colorScheme.primary,
                             RoundedCornerShape(12.dp)
                         )
-                        .clickable { showDropdown = true }
+                        .clickable { showDropdown = !showDropdown }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
@@ -935,18 +937,27 @@ fun StorageSettingsSection(
                     )
                 }
                 
-                if (showDropdown) {
-                    // Dropdown implementation would go here
-                    // For now, we'll just cycle through options
-                    onDeletionRateChange(
-                        when (deletionRate) {
-                            "3 Hours" -> "2 Hours"
-                            "2 Hours" -> "1 Hours"
-                            "1 Hours" -> "3 Hours"
-                            else -> "3 Hours"
-                        }
-                    )
-                    showDropdown = false
+                DropdownMenu(
+                    expanded = showDropdown,
+                    onDismissRequest = { showDropdown = false }
+                ) {
+                    val deletionRateOptions = listOf("1 Hour", "2 Hours", "3 Hours", "6 Hours", "12 Hours", "1 Day")
+                    
+                    deletionRateOptions.forEach { option ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = option,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (option == deletionRate) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                onDeletionRateChange(option)
+                                showDropdown = false
+                            }
+                        )
+                    }
                 }
             }
         }

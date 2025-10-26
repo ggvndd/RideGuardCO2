@@ -249,11 +249,11 @@ private fun BlackboxConnectedCard(
             .height(200.dp)
             .border(
                 width = 2.dp,
-                color = Blue80,
+                color = if (isOnline) Blue80 else Color(0xFFFF6B6B),
                 shape = RoundedCornerShape(16.dp)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
+            containerColor = if (isOnline) Color.Transparent else MaterialTheme.colorScheme.surface
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -261,23 +261,25 @@ private fun BlackboxConnectedCard(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Background Image
-            Image(
-                painter = painterResource(id = R.drawable.motorcycle_welcome_image),
-                contentDescription = "Blackbox Background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            
-            // Dark Overlay for better text visibility
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Color.Black.copy(alpha = 0.4f),
-                        RoundedCornerShape(16.dp)
-                    )
-            )
+            // Background Image (only show when online)
+            if (isOnline) {
+                Image(
+                    painter = painterResource(id = R.drawable.motorcycle_welcome_image),
+                    contentDescription = "Blackbox Background",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                
+                // Dark Overlay for better text visibility (only when online)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Color.Black.copy(alpha = 0.4f),
+                            RoundedCornerShape(16.dp)
+                        )
+                )
+            }
             
             // Content
             // Content - Centered both vertically and horizontally
@@ -292,13 +294,13 @@ private fun BlackboxConnectedCard(
                 Box(
                     modifier = Modifier
                         .background(
-                            MaterialTheme.colorScheme.primary,
+                            if (isOnline) MaterialTheme.colorScheme.primary else Color(0xFFFF6B6B),
                             RoundedCornerShape(8.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "Blackbox Serial Number",
+                        text = if (isOnline) "Blackbox Serial Number" else "Device Offline",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White,
                         textAlign = TextAlign.Center
@@ -309,9 +311,9 @@ private fun BlackboxConnectedCard(
                 
                 // Main Text - Centered
                 Text(
-                    text = blackboxName,
+                    text = if (isOnline) blackboxName else "Not Connected",
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = if (isOnline) Color.White else MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )

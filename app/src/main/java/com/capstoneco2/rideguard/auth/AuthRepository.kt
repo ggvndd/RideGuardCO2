@@ -5,6 +5,9 @@ import com.capstoneco2.rideguard.service.UserProfileService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class AuthRepository {
     private val authService = FirebaseAuthService()
@@ -15,12 +18,18 @@ class AuthRepository {
     
     init {
         // Initialize with current user state
+        val currentUser = authService.currentUser
         _authState.value = AuthState(
             isSignedIn = authService.isUserSignedIn,
-            user = authService.currentUser
+            user = currentUser
         )
         
-        // Note: Initial profile loading will be handled by the ViewModel when needed
+        // Load user profile if user is signed in
+        if (currentUser != null) {
+            CoroutineScope(Dispatchers.Main).launch {
+                loadUserProfile(currentUser.uid)
+            }
+        }
     }
     
     suspend fun signUp(email: String, password: String, username: String, phoneNumber: String) {

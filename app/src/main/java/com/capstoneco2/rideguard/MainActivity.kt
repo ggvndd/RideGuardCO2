@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -381,9 +382,28 @@ class MainActivity : ComponentActivity() {
 fun MyApp(
     onAuthSuccess: () -> Unit = {}
 ) {
-    var currentScreen by remember { mutableStateOf(AppScreen.WELCOME) }
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.authState.collectAsState()
+    
+    // Determine initial screen based on auth state
+    var currentScreen by remember { 
+        mutableStateOf(
+            if (authState.isSignedIn && authState.userProfile != null) {
+                AppScreen.MAIN_APP
+            } else {
+                AppScreen.WELCOME
+            }
+        )
+    }
+    
+    // Update screen when auth state changes
+    LaunchedEffect(authState.isSignedIn, authState.userProfile) {
+        if (authState.isSignedIn && authState.userProfile != null && currentScreen != AppScreen.MAIN_APP) {
+            currentScreen = AppScreen.MAIN_APP
+        } else if (!authState.isSignedIn && currentScreen == AppScreen.MAIN_APP) {
+            currentScreen = AppScreen.WELCOME
+        }
+    }
     
     AnimatedContent(
         targetState = currentScreen,
