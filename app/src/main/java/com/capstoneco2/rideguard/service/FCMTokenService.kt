@@ -3,15 +3,12 @@ package com.capstoneco2.rideguard.service
 import android.content.Context
 import android.provider.Settings
 import android.util.Log
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.capstoneco2.rideguard.data.FCMToken
-import com.capstoneco2.rideguard.data.toMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -146,50 +143,7 @@ class FCMTokenService @Inject constructor(
         }
     }
     
-    /**
-     * Get all devices for a specific user
-     */
-    suspend fun getUserDeviceTokens(userId: String): Result<List<FCMToken>> {
-        return try {
-            Log.d("FCMTokenService", "Retrieving FCM tokens for user: $userId across all devices")
-            
-            val tokensQuery = fcmTokensCollection
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            val tokens = tokensQuery.documents.mapNotNull { doc ->
-                try {
-                    FCMToken(
-                        id = doc.id,
-                        userId = doc.getString("userId") ?: "",
-                        token = doc.getString("token") ?: "",
-                        deviceId = doc.getString("deviceId") ?: "",
-                        deviceName = doc.getString("deviceName") ?: "",
-                        userDisplayName = doc.getString("userDisplayName") ?: "",
-                        platform = doc.getString("platform") ?: "android",
-                        appVersion = doc.getString("appVersion") ?: "",
-                        createdAt = doc.getLong("createdAt") ?: 0L,
-                        lastUpdatedAt = doc.getLong("lastUpdatedAt") ?: 0L,
-                        lastUsedAt = doc.getLong("lastUsedAt") ?: 0L,
-                        isActive = doc.getBoolean("isActive") ?: true,
-                        isPrimary = doc.getBoolean("isPrimary") ?: false
-                    )
-                } catch (e: Exception) {
-                    Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
-                    null
-                }
-            }.sortedByDescending { it.lastUsedAt }
-            
-            Log.d("FCMTokenService", "Found ${tokens.size} devices for user: $userId")
-            Result.success(tokens)
-            
-        } catch (e: Exception) {
-            Log.e("FCMTokenService", "Failed to retrieve user device tokens", e)
-            Result.failure(e)
-        }
-    }
+
     
     /**
      * Update last used time for a user's token on current device
@@ -220,22 +174,7 @@ class FCMTokenService @Inject constructor(
     
 
     
-    /**
-     * Check if this is the first user on the device (becomes primary)
-     */
-    private suspend fun checkIfPrimaryUser(deviceId: String): Boolean {
-        return try {
-            val existingUsersQuery = fcmTokensCollection
-                .whereEqualTo("deviceId", deviceId)
-                .whereEqualTo("isActive", true)
-                .get()
-                .await()
-            
-            existingUsersQuery.isEmpty // If no existing users, this becomes primary
-        } catch (e: Exception) {
-            true // Default to primary if check fails
-        }
-    }
+
     
     /**
      * Get unique device identifier
@@ -247,7 +186,7 @@ class FCMTokenService @Inject constructor(
     /**
      * Get human-readable device name
      */
-    private fun getDeviceName(context: Context): String {
+    private fun getDeviceName(_context: Context): String {
         val manufacturer = android.os.Build.MANUFACTURER
         val model = android.os.Build.MODEL
         return if (model.startsWith(manufacturer, ignoreCase = true)) {
@@ -272,13 +211,8 @@ class FCMTokenService @Inject constructor(
     /**
      * Smart cleanup: Only clean up current user's old tokens to avoid permission issues
      */
-    suspend fun cleanupInactiveFCMTokens(context: Context? = null): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun cleanupInactiveFCMTokens(context: Context): Result<Int> = withContext(Dispatchers.IO) {
         try {
-            if (context == null) {
-                Log.d("FCMTokenService", "No context provided for cleanup, skipping")
-                return@withContext Result.success(0)
-            }
-            
             // Only cleanup current user's tokens to avoid permission issues
             val currentUserId = getCurrentUserId(context)
             if (currentUserId == null) {
@@ -315,13 +249,13 @@ class FCMTokenService @Inject constructor(
             Log.i("FCMTokenService", "Smart cleanup completed: $cleanedCount tokens deactivated")
             Result.success(cleanedCount)
             
-        } catch (e: Exception) {
-            Log.e("FCMTokenService", "Failed smart cleanup", e)
-            Result.failure(e)
+        } catch (_: Exception) {
+            Log.e("FCMTokenService", "Failed smart cleanup")
+            Result.failure(Exception("Failed smart cleanup"))
         }
     }
     
-    private fun getCurrentUserId(context: Context): String? {
+    private fun getCurrentUserId(_context: Context): String? {
         return try {
             // Get current user from Firebase Auth (same as MainActivity)
             val currentUser = FirebaseAuth.getInstance().currentUser
@@ -329,59 +263,13 @@ class FCMTokenService @Inject constructor(
             
             Log.d("FCMTokenService", "Retrieved current user ID from Firebase Auth: $userId")
             userId
-        } catch (e: Exception) {
-            Log.w("FCMTokenService", "Failed to get current user ID from Firebase Auth", e)
+        } catch (_: Exception) {
+            Log.w("FCMTokenService", "Failed to get current user ID from Firebase Auth")
             null
         }
     }
     
-    /**
-     * Alternative cleanup method using server-side filtering (requires Firestore composite index)
-     * Use this method after creating the required composite index in Firebase Console
-     * Index URL: https://console.firebase.google.com/v1/r/project/rideguard-9b11e/firestore/indexes
-     * 
-     * Required composite index fields (in order):
-     * - isActive (Ascending)
-     * - lastUsedAt (Ascending)
-     * - __name__ (Ascending)
-     */
-    suspend fun cleanupInactiveFCMTokensServerSide(): Result<Int> = withContext(Dispatchers.IO) {
-        try {
-            Log.d("FCMTokenService", "Starting server-side cleanup of inactive FCM tokens")
-            
-            val thirtyDaysAgo = Timestamp(Date(System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L))
-            
-            // This query requires a composite index in Firestore
-            val oldTokensQuery = fcmTokensCollection
-                .whereEqualTo("isActive", true)
-                .whereLessThan("lastUsedAt", thirtyDaysAgo.toDate().time)
-            
-            val oldTokensSnapshot = oldTokensQuery.get().await()
-            
-            var deletedCount = 0
-            val batch = firestore.batch()
-            
-            for (document in oldTokensSnapshot.documents) {
-                batch.update(document.reference, "isActive", false)
-                deletedCount++
-                Log.d("FCMTokenService", "Marking old FCM token as inactive: ${document.id}")
-            }
-            
-            if (deletedCount > 0) {
-                batch.commit().await()
-                Log.i("FCMTokenService", "Successfully deactivated $deletedCount old FCM tokens (server-side)")
-            } else {
-                Log.d("FCMTokenService", "No old FCM tokens found for cleanup (server-side)")
-            }
-            
-            Result.success(deletedCount)
-        } catch (e: Exception) {
-            Log.e("FCMTokenService", "Failed server-side cleanup of inactive FCM tokens", e)
-            Log.e("FCMTokenService", "If you see an index error, create the composite index in Firebase Console")
-            Log.e("FCMTokenService", "Index URL provided in the error message above")
-            Result.failure(e)
-        }
-    }
+
 
     /**
      * Get count of active users on a device

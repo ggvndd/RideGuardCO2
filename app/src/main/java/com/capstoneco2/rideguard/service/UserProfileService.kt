@@ -41,6 +41,7 @@ class UserProfileService {
             
             if (document.exists()) {
                 // Parse emergency contacts from nested array
+                @Suppress("UNCHECKED_CAST")
                 val emergencyContactsData = document.get("emergencyContacts") as? List<Map<String, Any>> ?: emptyList()
                 val emergencyContacts = emergencyContactsData.map { contactMap ->
                     EmergencyContactRelation(
@@ -236,6 +237,7 @@ class UserProfileService {
                 .mapNotNull { document ->
                     try {
                         // Parse emergency contacts from nested array
+                        @Suppress("UNCHECKED_CAST")
                         val emergencyContactsData = document.get("emergencyContacts") as? List<Map<String, Any>> ?: emptyList()
                         val emergencyContacts = emergencyContactsData.map { contactMap ->
                             EmergencyContactRelation(

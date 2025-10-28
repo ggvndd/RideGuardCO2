@@ -2,7 +2,7 @@ package com.capstoneco2.rideguard.data
 
 /**
  * Data class representing a RideGuard hardware device connection
- * Stored in Firebase Firestore rideguard_id collection
+ * Stored in Firebase Firestore ride guard_id collection
  * Manages the relationship between hardware devices and users
  */
 data class RideGuardId(

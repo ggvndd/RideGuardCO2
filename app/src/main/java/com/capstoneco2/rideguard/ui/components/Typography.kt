@@ -48,24 +48,7 @@ fun SectionHeader(
     )
 }
 
-/**
- * Subheader component using bodyMedium typography (bold)
- */
-@Composable
-fun SubHeader(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Start,
-    color: Color = MaterialTheme.colorScheme.onBackground
-) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = color,
-        textAlign = textAlign,
-        modifier = modifier.fillMaxWidth()
-    )
-}
+
 
 /**
  * Body text component using bodyLarge typography

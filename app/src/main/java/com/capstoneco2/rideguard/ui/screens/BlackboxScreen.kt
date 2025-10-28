@@ -33,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -103,8 +104,6 @@ fun BlackboxScreen(
     }
     var isDeviceOnline by remember { mutableStateOf(false) } // Changed to false by default
     var deletionRate by remember { mutableStateOf("3 Hours") }
-    var showDeletionDropdown by remember { mutableStateOf(false) }
-    var showAddMemberDialog by remember { mutableStateOf(false) }
     var showPairingDialog by remember { mutableStateOf(false) }
     var deviceName by remember { mutableStateOf("No Device Connected") }
     var isVisible by remember { mutableStateOf(false) }
@@ -151,8 +150,7 @@ fun BlackboxScreen(
                 BlackBoxDeviceCard(
                     deviceName = deviceName,
                     isOnline = isDeviceOnline,
-                    onToggleStatus = { isDeviceOnline = !isDeviceOnline },
-                    onConnectDevice = { showPairingDialog = true }
+                    onToggleStatus = { isDeviceOnline = !isDeviceOnline }
                 )
             }
             
@@ -179,7 +177,7 @@ fun BlackboxScreen(
             }
             
             item {
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
                 )
@@ -653,7 +651,7 @@ private fun PairingSuccessContent(
     
     LaunchedEffect(Unit) {
         isVisible = true
-        kotlinx.coroutines.delay(300)
+        delay(300)
         showSuccessText = true
     }
     
@@ -730,18 +728,8 @@ private fun PairingSuccessContent(
 private fun BlackBoxDeviceCard(
     deviceName: String,
     isOnline: Boolean,
-    onToggleStatus: () -> Unit,
-    onConnectDevice: () -> Unit = {}
+    onToggleStatus: () -> Unit
 ) {
-    // Animate card scale based on connection status
-    val scale by animateFloatAsState(
-        targetValue = if (isOnline) 1.02f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "cardScale"
-    )
     
     // Animate card color transition
     val animatedAlpha by animateFloatAsState(
@@ -769,15 +757,7 @@ private fun BlackBoxDeviceCard(
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Device Icon with pulse animation
-            val iconScale by animateFloatAsState(
-                targetValue = if (isOnline) 1.1f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                ),
-                label = "iconScale"
-            )
+            // Device Icon
             
             // Custom device icon - no background rectangle
             Icon(
@@ -931,7 +911,7 @@ fun StorageSettingsSection(
                 ) {
                     Text(
                         text = "$deletionRate ▼",
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium),
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         color = Color.White
                     )
                 }
@@ -976,7 +956,7 @@ fun EmergencyContactsSection(
     val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(200) // Small delay for staggered appearance
+        delay(200) // Small delay for staggered appearance
         isVisible = true
     }
     

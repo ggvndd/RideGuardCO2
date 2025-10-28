@@ -1,7 +1,6 @@
 package com.capstoneco2.rideguard.service
 
 import com.capstoneco2.rideguard.data.EmergencyContactInfo
-import com.capstoneco2.rideguard.data.EmergencyContactRelation
 import com.capstoneco2.rideguard.data.UserProfile
 import javax.inject.Inject
 import javax.inject.Singleton

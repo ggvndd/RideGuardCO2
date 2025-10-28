@@ -111,7 +111,6 @@ fun TrafficAccidentDialog(
                         }
                         AccidentDialogState.LOCATION_VIEW -> {
                             LocationViewContent(
-                                onBack = { dialogState = AccidentDialogState.ACCIDENT_DETECTED },
                                 onClose = onClose,
                                 latitude = latitude,
                                 longitude = longitude
@@ -249,7 +248,6 @@ private fun AccidentDetectedContent(
 
 @Composable
 private fun LocationViewContent(
-    onBack: () -> Unit,
     onClose: () -> Unit,
     latitude: Double,
     longitude: Double

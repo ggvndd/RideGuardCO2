@@ -86,7 +86,6 @@ fun SettingsScreen(
     // Get auth state and user profile
     val authState by authViewModel.authState.collectAsState()
     val userName = authState.userProfile?.username ?: "User"
-    val userEmail = authState.userProfile?.email ?: "user@example.com"
 
     LazyColumn(
         modifier = Modifier

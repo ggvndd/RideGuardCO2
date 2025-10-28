@@ -47,16 +47,6 @@ class FirebaseAuthService {
             AuthResult.Error(e.message ?: "Password reset failed")
         }
     }
-
-    // Delete user account (for future use)
-    suspend fun deleteAccount(): AuthResult {
-        return try {
-            currentUser?.delete()?.await()
-            AuthResult.Success(null)
-        } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "Account deletion failed")
-        }
-    }
 }
 
 // Sealed class for auth results

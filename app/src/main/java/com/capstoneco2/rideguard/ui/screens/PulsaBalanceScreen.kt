@@ -90,9 +90,7 @@ fun PulsaBalanceScreen(
             item {
                 // Balance Card
                 PulsaBalanceCard(
-                    phoneNumber = phoneNumber,
-                    balance = currentBalance,
-                    expiryDate = expiryDate
+                    phoneNumber = phoneNumber
                 )
             }
             
@@ -130,9 +128,7 @@ fun PulsaBalanceScreen(
 
 @Composable
 private fun PulsaBalanceCard(
-    phoneNumber: String,
-    balance: String,
-    expiryDate: String
+    phoneNumber: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),

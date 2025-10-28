@@ -71,12 +71,12 @@ fun HomeScreen(
     
     // Load emergency contacts when screen loads
     LaunchedEffect(currentUserUid) {
-        android.util.Log.d("HomeScreen", "LaunchedEffect triggered. CurrentUserUid: $currentUserUid")
+        Log.d("HomeScreen", "LaunchedEffect triggered. CurrentUserUid: $currentUserUid")
         if (currentUserUid.isNotEmpty()) {
-            android.util.Log.d("HomeScreen", "Loading emergency contacts for user: $currentUserUid")
+            Log.d("HomeScreen", "Loading emergency contacts for user: $currentUserUid")
             emergencyContactViewModel.loadEmergencyContacts(currentUserUid)
         } else {
-            android.util.Log.w("HomeScreen", "CurrentUserUid is empty, not loading emergency contacts")
+            Log.w("HomeScreen", "CurrentUserUid is empty, not loading emergency contacts")
         }
     }
 
@@ -153,7 +153,7 @@ fun HomeScreen(
         if (showAccidentCard) {
             item {
                 TrafficAccidentCard(
-                    userName = "Lorem Ipsum",
+                    userName = authState.user?.displayName ?: "Current User",
                     onMoreDetailsClick = onShowAccidentDialog
                 )
             }

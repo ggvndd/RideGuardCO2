@@ -123,29 +123,7 @@ class EmergencyContactViewModel : ViewModel() {
         }
     }
     
-    /**
-     * Remove an emergency contact
-     */
-    fun removeEmergencyContact(contactId: String, userUid: String) {
-        viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
-            
-            val result = emergencyContactService.removeEmergencyContact(userUid, contactId)
-            if (result.isSuccess) {
-                _state.value = _state.value.copy(
-                    isLoading = false,
-                    successMessage = "Emergency contact removed successfully"
-                )
-                // Reload contacts to reflect the removal
-                loadEmergencyContacts(userUid)
-            } else {
-                _state.value = _state.value.copy(
-                    isLoading = false,
-                    error = result.exceptionOrNull()?.message ?: "Failed to remove emergency contact"
-                )
-            }
-        }
-    }
+    
     
     /**
      * Clear messages
