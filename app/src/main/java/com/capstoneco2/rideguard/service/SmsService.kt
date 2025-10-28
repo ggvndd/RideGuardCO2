@@ -30,7 +30,8 @@ class SmsService {
             "ambulance", "hospital", "injured", "hurt", "trapped", "stuck", "lost",
             "kidnapped", "robbery", "theft", "attack", "violence", "threat",
             "socorro", "emergencia", "urgente", "accidente", "peligro", "fuego",
-            "policia", "ambulancia", "hospital", "herido", "atrapado", "perdido"
+            "policia", "ambulancia", "hospital", "herido", "atrapado", "perdido",
+            "crash_id", "rideguard_id", "longitude", "latitude" // RideGuard crash data indicators
         )
     }
     
@@ -56,11 +57,24 @@ class SmsService {
             Log.i(TAG, "║ Content: $message")
             Log.i(TAG, "╚════════════════════════════════════════════════════════════════")
             
+            // Check for crash data first
+            val crashData = parseCrashData(message)
+            val isCrashData = crashData != null
+            
             // Check for emergency keywords
             val emergencyKeywordsFound = checkForEmergencyKeywords(message)
-            val isEmergency = emergencyKeywordsFound.isNotEmpty()
+            val isEmergency = emergencyKeywordsFound.isNotEmpty() || isCrashData
             
-            if (isEmergency) {
+            if (isCrashData) {
+                Log.w(TAG, "🚨 CRASH DATA SMS DETECTED!")
+                Log.w(TAG, "🚨 Crash ID: ${crashData!!.crashId}")
+                Log.w(TAG, "🚨 RideGuard ID: ${crashData.rideguardId}")
+                Log.w(TAG, "🚨 Location: ${crashData.latitude}, ${crashData.longitude}")
+                Log.w(TAG, "🚨 From: $sender")
+                
+                // Handle crash data as emergency
+                handlePotentialEmergency(context, sender, message, listOf("crash_data"))
+            } else if (isEmergency) {
                 Log.w(TAG, "⚠️ POTENTIAL EMERGENCY SMS DETECTED!")
                 Log.w(TAG, "⚠️ Keywords found: ${emergencyKeywordsFound.joinToString(", ")}")
                 Log.w(TAG, "⚠️ From: $sender")
@@ -73,7 +87,7 @@ class SmsService {
             // Send SMS data to server via HTTP POST (only if gateway is enabled)
             if (isGatewayEnabled(context)) {
                 Log.i(TAG, "🌐 Gateway mode enabled - forwarding SMS to server")
-                sendSmsDataToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound)
+                sendSmsDataToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound, crashData)
             } else {
                 Log.d(TAG, "📱 Gateway mode disabled - SMS processed locally only")
             }
@@ -96,7 +110,8 @@ class SmsService {
         message: String,
         timestamp: Long,
         isEmergency: Boolean,
-        emergencyKeywords: List<String>
+        emergencyKeywords: List<String>,
+        crashData: CrashData? = null
     ) {
         try {
             Log.d(TAG, "🌐 Preparing to send SMS data to server...")
@@ -108,17 +123,22 @@ class SmsService {
             // Use coroutine scope to send data asynchronously
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Use emergency endpoint for urgent messages
+                    // Use emergency endpoint for urgent messages or crash data
                     val result = if (isEmergency) {
                         Log.w(TAG, "🚨 Using emergency SMS transmission")
+                        
+                        // If we have crash data, include location from it
+                        val location = crashData?.let { "${it.latitude},${it.longitude}" }
+                        
                         httpService.sendEmergencySms(
                             sender = sender,
                             message = message,
                             timestamp = timestamp,
                             emergencyKeywords = emergencyKeywords,
-                            location = null, // TODO: Add location service integration
+                            location = location,
                             deviceId = deviceId,
-                            userId = userId
+                            userId = userId,
+                            crashData = crashData
                         )
                     } else {
                         httpService.sendSmsToServer(
@@ -128,7 +148,8 @@ class SmsService {
                             isEmergency = isEmergency,
                             emergencyKeywords = emergencyKeywords,
                             deviceId = deviceId,
-                            userId = userId
+                            userId = userId,
+                            crashData = crashData
                         )
                     }
                     
@@ -153,6 +174,259 @@ class SmsService {
         }
     }
     
+    /**
+     * Parse structured crash data from SMS message using regex patterns
+     * Supports multiple formats:
+     * - Line by line: "crash_id: A\nrideguard_id: A\nlongitude: -7.7676\nlatitude: 110.3698"
+     * - Comma separated: "crash_id:A, rideguard_id: A\nlongitude: -7.7676, latitude: 110.3698"
+     * - Mixed formats with various spacing
+     */
+    private fun parseCrashData(message: String): CrashData? {
+        try {
+            Log.d(TAG, "🔍 Attempting to parse crash data from message...")
+            Log.d(TAG, "🔍 Message to parse: '$message'")
+            
+            val crashData = CrashData()
+            
+            // Define regex patterns for each field with flexible formatting
+            val patterns = mapOf(
+                "crash_id" to listOf(
+                    "crash_id\\s*:\\s*([^,\\n\\r]+)".toRegex(RegexOption.IGNORE_CASE),
+                    "crashid\\s*:\\s*([^,\\n\\r]+)".toRegex(RegexOption.IGNORE_CASE),
+                    "crash\\s*id\\s*:\\s*([^,\\n\\r]+)".toRegex(RegexOption.IGNORE_CASE)
+                ),
+                "rideguard_id" to listOf(
+                    "rideguard_id\\s*:\\s*([^,\\n\\r]+)".toRegex(RegexOption.IGNORE_CASE),
+                    "rideguardid\\s*:\\s*([^,\\n\\r]+)".toRegex(RegexOption.IGNORE_CASE),
+                    "rideguard\\s*id\\s*:\\s*([^,\\n\\r]+)".toRegex(RegexOption.IGNORE_CASE)
+                ),
+                "longitude" to listOf(
+                    "longitude\\s*:\\s*([\\-+]?\\d*\\.?\\d+)".toRegex(RegexOption.IGNORE_CASE),
+                    "long\\s*:\\s*([\\-+]?\\d*\\.?\\d+)".toRegex(RegexOption.IGNORE_CASE),
+                    "lng\\s*:\\s*([\\-+]?\\d*\\.?\\d+)".toRegex(RegexOption.IGNORE_CASE)
+                ),
+                "latitude" to listOf(
+                    "latitude\\s*:\\s*([\\-+]?\\d*\\.?\\d+)".toRegex(RegexOption.IGNORE_CASE),
+                    "lat\\s*:\\s*([\\-+]?\\d*\\.?\\d+)".toRegex(RegexOption.IGNORE_CASE)
+                )
+            )
+            
+            // Try to extract crash_id
+            patterns["crash_id"]?.forEach { pattern ->
+                if (crashData.crashId == null) {
+                    val match = pattern.find(message)
+                    if (match != null) {
+                        crashData.crashId = match.groupValues[1].trim()
+                        Log.d(TAG, "📋 Found crash_id: '${crashData.crashId}' using pattern: ${pattern.pattern}")
+                    }
+                }
+            }
+            
+            // Try to extract rideguard_id
+            patterns["rideguard_id"]?.forEach { pattern ->
+                if (crashData.rideguardId == null) {
+                    val match = pattern.find(message)
+                    if (match != null) {
+                        crashData.rideguardId = match.groupValues[1].trim()
+                        Log.d(TAG, "📋 Found rideguard_id: '${crashData.rideguardId}' using pattern: ${pattern.pattern}")
+                    }
+                }
+            }
+            
+            // Try to extract longitude
+            patterns["longitude"]?.forEach { pattern ->
+                if (crashData.longitude == null) {
+                    val match = pattern.find(message)
+                    if (match != null) {
+                        val longitudeStr = match.groupValues[1].trim()
+                        crashData.longitude = longitudeStr.toDoubleOrNull()
+                        Log.d(TAG, "📍 Found longitude: '$longitudeStr' -> ${crashData.longitude} using pattern: ${pattern.pattern}")
+                    }
+                }
+            }
+            
+            // Try to extract latitude
+            patterns["latitude"]?.forEach { pattern ->
+                if (crashData.latitude == null) {
+                    val match = pattern.find(message)
+                    if (match != null) {
+                        val latitudeStr = match.groupValues[1].trim()
+                        crashData.latitude = latitudeStr.toDoubleOrNull()
+                        Log.d(TAG, "📍 Found latitude: '$latitudeStr' -> ${crashData.latitude} using pattern: ${pattern.pattern}")
+                    }
+                }
+            }
+            
+            // Check if we have valid crash data
+            val isValidCrashData = crashData.crashId != null && 
+                                  crashData.rideguardId != null && 
+                                  crashData.longitude != null && 
+                                  crashData.latitude != null
+            
+            if (isValidCrashData) {
+                Log.i(TAG, "✅ Successfully parsed crash data:")
+                Log.i(TAG, "✅ Crash ID: '${crashData.crashId}'")
+                Log.i(TAG, "✅ RideGuard ID: '${crashData.rideguardId}'")
+                Log.i(TAG, "✅ Location: ${crashData.latitude}, ${crashData.longitude}")
+                return crashData
+            } else {
+                Log.w(TAG, "⚠️ Regex parsing incomplete, trying fallback parser...")
+                return parseCrashDataFallback(message)
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error parsing crash data", e)
+            return null
+        }
+    }
+    
+    /**
+     * Fallback parser using simple keyword extraction
+     * For cases where regex patterns might miss unusual formatting
+     */
+    private fun parseCrashDataFallback(message: String): CrashData? {
+        try {
+            Log.d(TAG, "🔄 Using fallback parser...")
+            
+            val crashData = CrashData()
+            val cleanMessage = message.replace("\\s+".toRegex(), " ").lowercase()
+            
+            // Simple keyword-based extraction
+            val keywordMap = mapOf(
+                "crash_id" to listOf("crash_id", "crashid", "crash id"),
+                "rideguard_id" to listOf("rideguard_id", "rideguardid", "rideguard id"),
+                "longitude" to listOf("longitude", "long", "lng"),
+                "latitude" to listOf("latitude", "lat")
+            )
+            
+            for ((field, keywords) in keywordMap) {
+                for (keyword in keywords) {
+                    val keywordPattern = "$keyword\\s*:\\s*([^\\s,]+)".toRegex()
+                    val match = keywordPattern.find(cleanMessage)
+                    if (match != null) {
+                        val value = match.groupValues[1].trim()
+                        
+                        when (field) {
+                            "crash_id" -> {
+                                if (crashData.crashId == null) {
+                                    crashData.crashId = value.uppercase()
+                                    Log.d(TAG, "🔄 Fallback found crash_id: '$value'")
+                                }
+                            }
+                            "rideguard_id" -> {
+                                if (crashData.rideguardId == null) {
+                                    crashData.rideguardId = value.uppercase()
+                                    Log.d(TAG, "🔄 Fallback found rideguard_id: '$value'")
+                                }
+                            }
+                            "longitude" -> {
+                                if (crashData.longitude == null) {
+                                    crashData.longitude = value.toDoubleOrNull()
+                                    Log.d(TAG, "🔄 Fallback found longitude: '$value' -> ${crashData.longitude}")
+                                }
+                            }
+                            "latitude" -> {
+                                if (crashData.latitude == null) {
+                                    crashData.latitude = value.toDoubleOrNull()
+                                    Log.d(TAG, "🔄 Fallback found latitude: '$value' -> ${crashData.latitude}")
+                                }
+                            }
+                        }
+                        break // Found with this keyword, move to next field
+                    }
+                }
+            }
+            
+            // Try to extract numeric values as coordinates if field names are missing
+            if (crashData.longitude == null || crashData.latitude == null) {
+                Log.d(TAG, "🔄 Trying to extract coordinates from numbers...")
+                val numberPattern = "([\\-+]?\\d+\\.\\d+)".toRegex()
+                val numbers = numberPattern.findAll(message).map { it.value.toDoubleOrNull() }.filterNotNull().toList()
+                
+                if (numbers.size >= 2) {
+                    // Assume first number is longitude, second is latitude
+                    if (crashData.longitude == null) {
+                        crashData.longitude = numbers[0]
+                        Log.d(TAG, "🔄 Extracted longitude from numbers: ${numbers[0]}")
+                    }
+                    if (crashData.latitude == null) {
+                        crashData.latitude = numbers[1]
+                        Log.d(TAG, "🔄 Extracted latitude from numbers: ${numbers[1]}")
+                    }
+                }
+            }
+            
+            // Try to extract single letter/number IDs if field names are missing
+            if (crashData.crashId == null || crashData.rideguardId == null) {
+                Log.d(TAG, "🔄 Trying to extract IDs from single characters...")
+                val letterPattern = "([A-Z])".toRegex()
+                val letters = letterPattern.findAll(message.uppercase()).map { it.value }.toList()
+                
+                if (letters.isNotEmpty()) {
+                    if (crashData.crashId == null) {
+                        crashData.crashId = letters[0]
+                        Log.d(TAG, "🔄 Extracted crash_id from letters: ${letters[0]}")
+                    }
+                    if (crashData.rideguardId == null && letters.size > 1) {
+                        crashData.rideguardId = letters[1]
+                        Log.d(TAG, "🔄 Extracted rideguard_id from letters: ${letters[1]}")
+                    } else if (crashData.rideguardId == null) {
+                        crashData.rideguardId = letters[0] // Use same if only one letter
+                        Log.d(TAG, "🔄 Using same letter for rideguard_id: ${letters[0]}")
+                    }
+                }
+            }
+            
+            // Final validation
+            val isValidCrashData = crashData.crashId != null && 
+                                  crashData.rideguardId != null && 
+                                  crashData.longitude != null && 
+                                  crashData.latitude != null
+            
+            if (isValidCrashData) {
+                Log.i(TAG, "✅ Fallback parser success:")
+                Log.i(TAG, "✅ Crash ID: '${crashData.crashId}'")
+                Log.i(TAG, "✅ RideGuard ID: '${crashData.rideguardId}'")
+                Log.i(TAG, "✅ Location: ${crashData.latitude}, ${crashData.longitude}")
+                return crashData
+            } else {
+                Log.w(TAG, "❌ Fallback parser also failed:")
+                Log.w(TAG, "❌ crash_id: ${crashData.crashId}")
+                Log.w(TAG, "❌ rideguard_id: ${crashData.rideguardId}")
+                Log.w(TAG, "❌ longitude: ${crashData.longitude}")
+                Log.w(TAG, "❌ latitude: ${crashData.latitude}")
+                return null
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error in fallback parser", e)
+            return null
+        }
+    }
+    
+    /**
+     * Data class to hold parsed crash information
+     */
+    data class CrashData(
+        var crashId: String? = null,
+        var rideguardId: String? = null,
+        var longitude: Double? = null,
+        var latitude: Double? = null
+    ) {
+        fun toJsonString(): String {
+            return """
+                {
+                    "crash_id": "$crashId",
+                    "rideguard_id": "$rideguardId", 
+                    "longitude": $longitude,
+                    "latitude": $latitude,
+                    "timestamp": ${System.currentTimeMillis()},
+                    "parsed_at": "${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}"
+                }
+            """.trimIndent()
+        }
+    }
+
     /**
      * Get device ID for tracking (simplified version)
      */

@@ -44,7 +44,8 @@ class SmsHttpService {
         isEmergency: Boolean = false,
         emergencyKeywords: List<String> = emptyList(),
         deviceId: String? = null,
-        userId: String? = null
+        userId: String? = null,
+        crashData: SmsService.CrashData? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Preparing to send SMS data to server...")
@@ -57,7 +58,8 @@ class SmsHttpService {
                 isEmergency = isEmergency,
                 emergencyKeywords = emergencyKeywords,
                 deviceId = deviceId,
-                userId = userId
+                userId = userId,
+                crashData = crashData
             )
             
             Log.d(TAG, "JSON Payload: $jsonPayload")
@@ -115,7 +117,8 @@ class SmsHttpService {
         isEmergency: Boolean = false,
         emergencyKeywords: List<String> = emptyList(),
         deviceId: String? = null,
-        userId: String? = null
+        userId: String? = null,
+        crashData: SmsService.CrashData? = null
     ) {
         try {
             Log.d(TAG, "Sending SMS data asynchronously...")
@@ -127,7 +130,8 @@ class SmsHttpService {
                 isEmergency = isEmergency,
                 emergencyKeywords = emergencyKeywords,
                 deviceId = deviceId,
-                userId = userId
+                userId = userId,
+                crashData = crashData
             )
             
             val requestBody = jsonPayload.toRequestBody(JSON_MEDIA_TYPE)
@@ -179,7 +183,8 @@ class SmsHttpService {
         isEmergency: Boolean,
         emergencyKeywords: List<String>,
         deviceId: String?,
-        userId: String?
+        userId: String?,
+        crashData: SmsService.CrashData? = null
     ): String {
         val jsonObject = JSONObject().apply {
             put("sender", sender)
@@ -206,6 +211,24 @@ class SmsHttpService {
             // Processing metadata
             put("processingDelay", System.currentTimeMillis() - timestamp)
             put("messageHash", message.hashCode()) // For deduplication on server
+            
+            // Crash data if available
+            crashData?.let { crash ->
+                put("hasCrashData", true)
+                // Put crash data fields at root level as expected by backend
+                put("crash_id", crash.crashId)
+                put("rideguard_id", crash.rideguardId)
+                put("long", crash.longitude)  // Backend expects 'long', not 'longitude'
+                put("lat", crash.latitude)    // Backend expects 'lat', not 'latitude'
+                // Keep nested object for additional context
+                put("crashData", JSONObject().apply {
+                    put("crash_id", crash.crashId)
+                    put("rideguard_id", crash.rideguardId)
+                    put("longitude", crash.longitude)
+                    put("latitude", crash.latitude)
+                    put("location_string", "${crash.latitude},${crash.longitude}")
+                })
+            } ?: put("hasCrashData", false)
         }
         
         return jsonObject.toString()
@@ -267,15 +290,18 @@ class SmsHttpService {
         emergencyKeywords: List<String>,
         location: String? = null,
         deviceId: String? = null,
-        userId: String? = null
+        userId: String? = null,
+        crashData: SmsService.CrashData? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             Log.w(TAG, "🚨 SENDING EMERGENCY SMS TO SERVER 🚨")
             
             val jsonPayload = createEmergencySmsJsonPayload(
                 sender, message, timestamp, emergencyKeywords, 
-                location, deviceId, userId
+                location, deviceId, userId, crashData
             )
+            
+            Log.d(TAG, "🚨 Emergency JSON Payload: $jsonPayload")
             
             val requestBody = jsonPayload.toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
@@ -323,7 +349,8 @@ class SmsHttpService {
         emergencyKeywords: List<String>,
         location: String?,
         deviceId: String?,
-        userId: String?
+        userId: String?,
+        crashData: SmsService.CrashData? = null
     ): String {
         val jsonObject = JSONObject().apply {
             // Basic SMS data
@@ -351,6 +378,26 @@ class SmsHttpService {
             put("appVersion", "1.0")
             put("processingDelay", System.currentTimeMillis() - timestamp)
             put("alertLevel", "high")
+            
+            // Crash data if available (high priority for emergency)
+            crashData?.let { crash ->
+                put("hasCrashData", true)
+                // Put crash data fields at root level as expected by backend
+                put("crash_id", crash.crashId)
+                put("rideguard_id", crash.rideguardId)
+                put("long", crash.longitude)  // Backend expects 'long', not 'longitude'
+                put("lat", crash.latitude)    // Backend expects 'lat', not 'latitude'
+                // Keep nested object for additional context
+                put("crashData", JSONObject().apply {
+                    put("crash_id", crash.crashId)
+                    put("rideguard_id", crash.rideguardId)
+                    put("longitude", crash.longitude)
+                    put("latitude", crash.latitude)
+                    put("location_string", "${crash.latitude},${crash.longitude}")
+                })
+                // Override location with crash data if available
+                put("location", "${crash.latitude},${crash.longitude}")
+            } ?: put("hasCrashData", false)
         }
         
         return jsonObject.toString()
@@ -360,9 +407,10 @@ class SmsHttpService {
      * Update server endpoint (useful for switching between dev/prod)
      */
     fun updateEndpoint(newEndpoint: String) {
-        Log.i(TAG, "Endpoint updated from $SMS_ENDPOINT to $newEndpoint")
-        // Note: This would require making SMS_ENDPOINT mutable
+        Log.i(TAG, "Endpoint updated from ${ApiConfig.SmsEndpoints.RECEIVE_SMS_URL} to $newEndpoint")
+        // Note: This would require making endpoint configuration mutable
         // For now, this is just a placeholder for the concept
+        // To change endpoints, update ApiConfig.kt and rebuild the app
     }
     
     /**
