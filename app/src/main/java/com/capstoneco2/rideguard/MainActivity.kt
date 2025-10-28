@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
+import androidx.activity.result.contract.ActivityResultContracts
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -30,8 +31,8 @@ import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import android.Manifest
 import com.capstoneco2.rideguard.service.SmsService
 import com.capstoneco2.rideguard.ui.screens.SignInPage
@@ -54,7 +55,23 @@ class MainActivity : ComponentActivity() {
     
     companion object {
         private const val TAG = "MainActivity"
-        private const val SMS_PERMISSION_REQUEST_CODE = 123
+    }
+    
+    // Modern permission request launcher
+    private val smsPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val readSmsGranted = permissions[Manifest.permission.READ_SMS] == true
+        val receiveSmsGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
+        
+        if (readSmsGranted && receiveSmsGranted) {
+            Log.i(TAG, "✅ SMS permissions granted successfully!")
+            onSmsPermissionsGranted()
+        } else {
+            Log.w(TAG, "❌ SMS permissions denied. SMS reading functionality will not work.")
+            Log.w(TAG, "READ_SMS granted: $readSmsGranted")
+            Log.w(TAG, "RECEIVE_SMS granted: $receiveSmsGranted")
+        }
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -166,16 +183,7 @@ class MainActivity : ComponentActivity() {
         return currentUser?.displayName ?: currentUser?.email?.substringBefore("@")
     }
     
-    /**
-     * Get current app version
-     */
-    private fun getAppVersion(): String {
-        return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
-        } catch (e: Exception) {
-            "1.0"
-        }
-    }
+
     
     /**
      * Store FCM token temporarily for saving after authentication
@@ -184,10 +192,10 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "Storing FCM token for later save: ${token.takeLast(10)}")
         
         val sharedPref = getSharedPreferences("fcm_prefs", Context.MODE_PRIVATE)
-        sharedPref.edit()
-            .putString("pending_fcm_token", token)
-            .putLong("token_timestamp", System.currentTimeMillis())
-            .apply()
+        sharedPref.edit {
+            putString("pending_fcm_token", token)
+            putLong("token_timestamp", System.currentTimeMillis())
+        }
         
         Log.i(TAG, "FCM token stored temporarily in SharedPreferences, will be saved after user authentication")
     }
@@ -206,10 +214,10 @@ class MainActivity : ComponentActivity() {
                     saveFCMTokenToDatabase(pendingToken)
                     
                     // Clear the pending token after saving
-                    sharedPref.edit()
-                        .remove("pending_fcm_token")
-                        .remove("token_timestamp")
-                        .apply()
+                    sharedPref.edit {
+                        remove("pending_fcm_token")
+                        remove("token_timestamp")
+                    }
                     
                     Log.i(TAG, "Pending FCM token saved and cleared from temporary storage")
                 }
@@ -264,48 +272,14 @@ class MainActivity : ComponentActivity() {
         
         if (permissionsNeeded.isNotEmpty()) {
             Log.d(TAG, "Requesting SMS permissions: ${permissionsNeeded.joinToString(", ")}")
-            ActivityCompat.requestPermissions(
-                this,
-                permissionsNeeded.toTypedArray(),
-                SMS_PERMISSION_REQUEST_CODE
-            )
+            smsPermissionLauncher.launch(permissionsNeeded.toTypedArray())
         } else {
             Log.i(TAG, "SMS permissions already granted")
             onSmsPermissionsGranted()
         }
     }
     
-    /**
-     * Handle permission request results
-     */
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        
-        when (requestCode) {
-            SMS_PERMISSION_REQUEST_CODE -> {
-                val readSmsGranted = grantResults.isNotEmpty() && 
-                    permissions.contains(Manifest.permission.READ_SMS) &&
-                    grantResults[permissions.indexOf(Manifest.permission.READ_SMS)] == PackageManager.PERMISSION_GRANTED
-                
-                val receiveSmsGranted = grantResults.isNotEmpty() && 
-                    permissions.contains(Manifest.permission.RECEIVE_SMS) &&
-                    grantResults[permissions.indexOf(Manifest.permission.RECEIVE_SMS)] == PackageManager.PERMISSION_GRANTED
-                
-                if (readSmsGranted && receiveSmsGranted) {
-                    Log.i(TAG, "✅ SMS permissions granted successfully!")
-                    onSmsPermissionsGranted()
-                } else {
-                    Log.w(TAG, "❌ SMS permissions denied. SMS reading functionality will not work.")
-                    Log.w(TAG, "READ_SMS granted: $readSmsGranted")
-                    Log.w(TAG, "RECEIVE_SMS granted: $receiveSmsGranted")
-                }
-            }
-        }
-    }
+
     
     /**
      * Called when SMS permissions are granted - initialize SMS functionality
