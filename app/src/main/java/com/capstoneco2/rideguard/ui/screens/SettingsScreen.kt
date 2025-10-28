@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -64,7 +63,6 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     onShowAccidentDialog: () -> Unit = { },
     onLogoutSuccess: () -> Unit = { },
-    onNavigateToFirebaseTest: () -> Unit = { },
     authViewModel: AuthViewModel = viewModel()
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
@@ -413,25 +411,7 @@ fun SettingsScreen(
             }
         }
         
-        item {
-            // Debug Section
-            SectionHeader(text = "Debug Tools")
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            SecondaryButton(
-                text = "Test Firebase Collections",
-                onClick = onNavigateToFirebaseTest,
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            CaptionText(
-                text = "Test CrashId and RideGuardId Firebase collections",
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+
         
         item {
             Spacer(modifier = Modifier.height(80.dp)) // Space for bottom nav

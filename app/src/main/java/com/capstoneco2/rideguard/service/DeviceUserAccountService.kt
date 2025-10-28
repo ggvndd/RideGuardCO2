@@ -1,6 +1,7 @@
 package com.capstoneco2.rideguard.service
 
 import android.content.Context
+import android.util.Log
 import com.capstoneco2.rideguard.data.FCMToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,12 +57,12 @@ class DeviceUserAccountService @Inject constructor(
                 // Set as current user
                 setCurrentUser(userId, context)
                 
-                android.util.Log.d("DeviceUserAccountService", "Successfully registered user account: $userId ($userDisplayName)")
+                Log.d("DeviceUserAccountService", "Successfully registered user account: $userId ($userDisplayName)")
             }
             
             result
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to register user account: $userId", e)
+            Log.e("DeviceUserAccountService", "Failed to register user account: $userId", e)
             Result.failure(e)
         }
     }
@@ -80,10 +81,10 @@ class DeviceUserAccountService @Inject constructor(
             // Refresh device users list to update last used times
             refreshDeviceUsers(context)
             
-            android.util.Log.d("DeviceUserAccountService", "Switched to user account: $userId")
+            Log.d("DeviceUserAccountService", "Switched to user account: $userId")
             Result.success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to switch user account: $userId", e)
+            Log.e("DeviceUserAccountService", "Failed to switch user account: $userId", e)
             Result.failure(e)
         }
     }
@@ -102,12 +103,12 @@ class DeviceUserAccountService @Inject constructor(
                 // Set as current user if not already
                 setCurrentUser(userId, context)
                 
-                android.util.Log.d("DeviceUserAccountService", "Set primary user account: $userId")
+                Log.d("DeviceUserAccountService", "Set primary user account: $userId")
             }
             
             result
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to set primary user account: $userId", e)
+            Log.e("DeviceUserAccountService", "Failed to set primary user account: $userId", e)
             Result.failure(e)
         }
     }
@@ -136,12 +137,12 @@ class DeviceUserAccountService @Inject constructor(
                     nextUser?.let { setCurrentUser(it.userId, context) }
                 }
                 
-                android.util.Log.d("DeviceUserAccountService", "Removed user account: $userId")
+                Log.d("DeviceUserAccountService", "Removed user account: $userId")
             }
             
             result
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to remove user account: $userId", e)
+            Log.e("DeviceUserAccountService", "Failed to remove user account: $userId", e)
             Result.failure(e)
         }
     }
@@ -157,12 +158,12 @@ class DeviceUserAccountService @Inject constructor(
                 val users = result.getOrNull() ?: emptyList()
                 _allDeviceUsers.value = users
                 
-                android.util.Log.d("DeviceUserAccountService", "Retrieved ${users.size} user accounts on device")
+                Log.d("DeviceUserAccountService", "Retrieved ${users.size} user accounts on device")
             }
             
             result
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to get device user accounts", e)
+            Log.e("DeviceUserAccountService", "Failed to get device user accounts", e)
             Result.failure(e)
         }
     }
@@ -174,7 +175,7 @@ class DeviceUserAccountService @Inject constructor(
         return try {
             fcmTokenService.getPrimaryUser(context)
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to get primary user account", e)
+            Log.e("DeviceUserAccountService", "Failed to get primary user account", e)
             Result.failure(e)
         }
     }
@@ -187,7 +188,7 @@ class DeviceUserAccountService @Inject constructor(
             val users = fcmTokenService.getDeviceUserTokens(context).getOrNull() ?: emptyList()
             users.any { it.userId == userId }
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to check user account existence: $userId", e)
+            Log.e("DeviceUserAccountService", "Failed to check user account existence: $userId", e)
             false
         }
     }
@@ -206,10 +207,10 @@ class DeviceUserAccountService @Inject constructor(
                 _currentUser.value = primaryUser
             }
             
-            android.util.Log.d("DeviceUserAccountService", "Initialized device user account service")
+            Log.d("DeviceUserAccountService", "Initialized device user account service")
             Result.success(Unit)
         } catch (e: Exception) {
-            android.util.Log.e("DeviceUserAccountService", "Failed to initialize device user account service", e)
+            Log.e("DeviceUserAccountService", "Failed to initialize device user account service", e)
             Result.failure(e)
         }
     }

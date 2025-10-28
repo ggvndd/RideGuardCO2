@@ -1,11 +1,13 @@
 package com.capstoneco2.rideguard.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.capstoneco2.rideguard.data.EmergencyContactInfo
 import com.capstoneco2.rideguard.data.UserProfile
 import com.capstoneco2.rideguard.service.EmergencyContactServiceAdapter
 import com.capstoneco2.rideguard.service.UserProfileService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,20 +34,20 @@ class EmergencyContactViewModel : ViewModel() {
      */
     fun loadEmergencyContacts(userUid: String) {
         viewModelScope.launch {
-            android.util.Log.d("EmergencyContactVM", "Loading emergency contacts for user: $userUid")
+            Log.d("EmergencyContactVM", "Loading emergency contacts for user: $userUid")
             _state.value = _state.value.copy(isLoading = true, error = null)
             
             val result = emergencyContactService.getEmergencyContacts(userUid)
             if (result.isSuccess) {
                 val contacts = result.getOrNull() ?: emptyList()
-                android.util.Log.d("EmergencyContactVM", "Loaded ${contacts.size} emergency contacts: $contacts")
+                Log.d("EmergencyContactVM", "Loaded ${contacts.size} emergency contacts: $contacts")
                 _state.value = _state.value.copy(
                     contacts = contacts,
                     isLoading = false
                 )
             } else {
                 val error = result.exceptionOrNull()?.message ?: "Failed to load emergency contacts"
-                android.util.Log.e("EmergencyContactVM", "Failed to load emergency contacts: $error")
+                Log.e("EmergencyContactVM", "Failed to load emergency contacts: $error")
                 _state.value = _state.value.copy(
                     isLoading = false,
                     error = error
@@ -93,7 +95,7 @@ class EmergencyContactViewModel : ViewModel() {
                 )
                 
                 // Add a small delay to ensure Firestore write is complete
-                kotlinx.coroutines.delay(500)
+                delay(500)
                 
                 // Then reload contacts to show the new addition
                 loadEmergencyContactsAfterAdd(ownerUid)

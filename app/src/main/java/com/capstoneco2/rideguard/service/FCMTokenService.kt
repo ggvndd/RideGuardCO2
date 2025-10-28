@@ -2,15 +2,15 @@ package com.capstoneco2.rideguard.service
 
 import android.content.Context
 import android.provider.Settings
+import android.util.Log
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.Timestamp
 import com.capstoneco2.rideguard.data.FCMToken
 import com.capstoneco2.rideguard.data.toMap
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import android.util.Log
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -106,7 +106,7 @@ class FCMTokenService @Inject constructor(
     suspend fun getDeviceUserTokens(context: Context): Result<List<FCMToken>> {
         return try {
             val deviceId = getDeviceId(context)
-            android.util.Log.d("FCMTokenService", "Retrieving all user FCM tokens for device: $deviceId")
+            Log.d("FCMTokenService", "Retrieving all user FCM tokens for device: $deviceId")
             
             val tokensQuery = fcmTokensCollection
                 .whereEqualTo("deviceId", deviceId)
@@ -132,16 +132,16 @@ class FCMTokenService @Inject constructor(
                         isPrimary = doc.getBoolean("isPrimary") ?: false
                     )
                 } catch (e: Exception) {
-                    android.util.Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
+                    Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
                     null
                 }
             }.sortedByDescending { it.lastUsedAt } // Most recently used first
             
-            android.util.Log.d("FCMTokenService", "Found ${tokens.size} user accounts on device: $deviceId")
+            Log.d("FCMTokenService", "Found ${tokens.size} user accounts on device: $deviceId")
             Result.success(tokens)
             
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to retrieve device user tokens", e)
+            Log.e("FCMTokenService", "Failed to retrieve device user tokens", e)
             Result.failure(e)
         }
     }
@@ -151,7 +151,7 @@ class FCMTokenService @Inject constructor(
      */
     suspend fun getUserDeviceTokens(userId: String): Result<List<FCMToken>> {
         return try {
-            android.util.Log.d("FCMTokenService", "Retrieving FCM tokens for user: $userId across all devices")
+            Log.d("FCMTokenService", "Retrieving FCM tokens for user: $userId across all devices")
             
             val tokensQuery = fcmTokensCollection
                 .whereEqualTo("userId", userId)
@@ -177,16 +177,16 @@ class FCMTokenService @Inject constructor(
                         isPrimary = doc.getBoolean("isPrimary") ?: false
                     )
                 } catch (e: Exception) {
-                    android.util.Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
+                    Log.w("FCMTokenService", "Failed to parse FCM token document: ${doc.id}", e)
                     null
                 }
             }.sortedByDescending { it.lastUsedAt }
             
-            android.util.Log.d("FCMTokenService", "Found ${tokens.size} devices for user: $userId")
+            Log.d("FCMTokenService", "Found ${tokens.size} devices for user: $userId")
             Result.success(tokens)
             
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to retrieve user device tokens", e)
+            Log.e("FCMTokenService", "Failed to retrieve user device tokens", e)
             Result.failure(e)
         }
     }
@@ -209,11 +209,11 @@ class FCMTokenService @Inject constructor(
                 doc.reference.update("lastUsedAt", System.currentTimeMillis()).await()
             }
             
-            android.util.Log.d("FCMTokenService", "Updated last used time for user: $userId on device: $deviceId")
+            Log.d("FCMTokenService", "Updated last used time for user: $userId on device: $deviceId")
             Result.success(Unit)
             
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to update last used time", e)
+            Log.e("FCMTokenService", "Failed to update last used time", e)
             Result.failure(e)
         }
     }
@@ -324,7 +324,7 @@ class FCMTokenService @Inject constructor(
     private fun getCurrentUserId(context: Context): String? {
         return try {
             // Get current user from Firebase Auth (same as MainActivity)
-            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            val currentUser = FirebaseAuth.getInstance().currentUser
             val userId = currentUser?.uid
             
             Log.d("FCMTokenService", "Retrieved current user ID from Firebase Auth: $userId")
@@ -438,7 +438,7 @@ class FCMTokenService @Inject constructor(
             
             Result.success(primaryUser)
         } catch (e: Exception) {
-            android.util.Log.e("FCMTokenService", "Failed to get primary user", e)
+            Log.e("FCMTokenService", "Failed to get primary user", e)
             Result.failure(e)
         }
     }

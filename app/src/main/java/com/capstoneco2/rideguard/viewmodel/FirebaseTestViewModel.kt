@@ -8,7 +8,6 @@ import com.capstoneco2.rideguard.data.CrashIdService
 import com.capstoneco2.rideguard.data.RideGuardId
 import com.capstoneco2.rideguard.data.RideGuardIdService
 import com.capstoneco2.rideguard.service.FCMTokenService
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +15,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 data class FirebaseTestState(
@@ -44,6 +46,10 @@ class FirebaseTestViewModel @Inject constructor(
     private val _fcmTokenTestResult = MutableStateFlow("")
     val fcmTokenTestResult: StateFlow<String> = _fcmTokenTestResult.asStateFlow()
     
+    // Helper formatters
+    private val timeFormatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    private val dateTimeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    
     private fun addResult(result: String) {
         val currentResults = _state.value.results.toMutableList()
         currentResults.add(0, "[${getCurrentTime()}] $result") // Add to top
@@ -60,16 +66,33 @@ class FirebaseTestViewModel @Inject constructor(
         _fcmTokenTestResult.value = newResult
     }
     
-    private fun getCurrentTime(): String {
-        val formatter = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-        return formatter.format(java.util.Date())
+    private fun getCurrentTime(): String = timeFormatter.format(Date())
+    
+    private fun formatDateTime(timestamp: Long): String = dateTimeFormatter.format(Date(timestamp))
+    
+    private fun setLoadingState() {
+        _state.value = _state.value.copy(isLoading = true, error = null)
+    }
+    
+    private fun setIdleState() {
+        _state.value = _state.value.copy(isLoading = false)
+    }
+    
+    private fun handleResult(result: Result<*>, successMessage: String, failureMessage: String) {
+        if (result.isSuccess) {
+            addResult("✅ $successMessage")
+        } else {
+            val error = result.exceptionOrNull()?.message ?: "Unknown error"
+            addResult("❌ $failureMessage: $error")
+            _state.value = _state.value.copy(error = error)
+        }
     }
     
     // CrashId Service Tests
     
     fun reportCrash(crashId: String, reporterId: String, userId: String, latitude: Double, longitude: Double) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            setLoadingState()
             
             try {
                 val result = crashIdService.reportCrash(crashId, reporterId, userId, latitude, longitude)
@@ -90,14 +113,14 @@ class FirebaseTestViewModel @Inject constructor(
                 addResult("❌ EXCEPTION: ${e.message}")
                 _state.value = _state.value.copy(error = e.message)
             } finally {
-                _state.value = _state.value.copy(isLoading = false)
+                setIdleState()
             }
         }
     }
     
     fun getCrash(crashId: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            setLoadingState()
             
             try {
                 val crash = crashIdService.getCrashById(crashId)
@@ -116,7 +139,7 @@ class FirebaseTestViewModel @Inject constructor(
                 addResult("❌ EXCEPTION: ${e.message}")
                 _state.value = _state.value.copy(error = e.message)
             } finally {
-                _state.value = _state.value.copy(isLoading = false)
+                setIdleState()
             }
         }
     }
@@ -233,7 +256,7 @@ class FirebaseTestViewModel @Inject constructor(
                     addResult("   Current User: ${connection.currentUserId}")
                     addResult("   Previous User: ${connection.previousUserId ?: "None"}")
                     addResult("   Active: ${connection.isActive}")
-                    addResult("   Connected: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(connection.connectedAt))}")
+                    addResult("   Connected: ${formatDateTime(connection.connectedAt)}")
                 } else {
                     addResult("❌ DEVICE NOT FOUND: $deviceId")
                 }
@@ -398,7 +421,7 @@ class FirebaseTestViewModel @Inject constructor(
                     users.forEach { user ->
                         addFCMTokenResult("   - ${user.userDisplayName} (${user.userId})")
                         addFCMTokenResult("     Primary: ${user.isPrimary}")
-                        addFCMTokenResult("     Last Used: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(user.lastUsedAt))}")
+                        addFCMTokenResult("     Last Used: ${formatDateTime(user.lastUsedAt)}")
                         addFCMTokenResult("     Token: ${user.token.take(20)}...")
                     }
                     
@@ -429,7 +452,7 @@ class FirebaseTestViewModel @Inject constructor(
                         addFCMTokenResult("   Display Name: ${primaryUser.userDisplayName}")
                         addFCMTokenResult("   User ID: ${primaryUser.userId}")
                         addFCMTokenResult("   Device: ${primaryUser.deviceName}")
-                        addFCMTokenResult("   Last Used: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(primaryUser.lastUsedAt))}")
+                        addFCMTokenResult("   Last Used: ${formatDateTime(primaryUser.lastUsedAt)}")
                     } else {
                         addFCMTokenResult("⚠️ No primary user found on this device")
                     }

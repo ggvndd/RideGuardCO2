@@ -21,7 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,10 +43,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.capstoneco2.rideguard.R
-import com.capstoneco2.rideguard.ui.components.BodyText
-import com.capstoneco2.rideguard.ui.components.MainHeader
-import com.capstoneco2.rideguard.ui.components.PrimaryButton
-import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.Black80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
@@ -58,7 +55,6 @@ import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
 fun HomeScreen(
     userName: String = "User",
     onNavigateToPulsaBalance: () -> Unit = {},
-    onNavigateToBlackbox: () -> Unit = {},
     showAccidentCard: Boolean = false,
     onShowAccidentDialog: () -> Unit = {},
     authViewModel: AuthViewModel = viewModel(),
@@ -372,10 +368,10 @@ private fun PulsaBalanceSection(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-        
-        Divider(
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
-        )
+
+       HorizontalDivider(
+           Modifier, DividerDefaults.Thickness, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+       )
     }
 }
 

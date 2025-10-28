@@ -1,5 +1,6 @@
 package com.capstoneco2.rideguard.ui.components
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -115,7 +116,7 @@ fun ComponentShowcaseScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, uiMode = android.content.res.Configuration.UI_MODE_NIGHT_YES)
+@Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun ComponentShowcaseScreenDarkPreview() {
     MyAppTheme(darkTheme = true) {

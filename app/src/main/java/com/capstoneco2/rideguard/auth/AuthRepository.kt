@@ -2,6 +2,7 @@ package com.capstoneco2.rideguard.auth
 
 import com.capstoneco2.rideguard.data.UserProfile
 import com.capstoneco2.rideguard.service.UserProfileService
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +34,7 @@ class AuthRepository {
     }
     
     suspend fun signUp(email: String, password: String, username: String, phoneNumber: String) {
-        _authState.value = _authState.value.copy(isLoading = true, error = null)
+        setLoadingState()
         
         when (val result = authService.signUp(email, password)) {
             is AuthResult.Success -> {
@@ -71,7 +72,7 @@ class AuthRepository {
     }
     
     suspend fun signIn(email: String, password: String) {
-        _authState.value = _authState.value.copy(isLoading = true, error = null)
+        setLoadingState()
         
         when (val result = authService.signIn(email, password)) {
             is AuthResult.Success -> {
@@ -126,7 +127,7 @@ class AuthRepository {
     }
     
     suspend fun sendPasswordResetEmail(email: String) {
-        _authState.value = _authState.value.copy(isLoading = true, error = null)
+        setLoadingState()
         
         when (val result = authService.sendPasswordResetEmail(email)) {
             is AuthResult.Success -> {
@@ -147,12 +148,16 @@ class AuthRepository {
     fun clearError() {
         _authState.value = _authState.value.copy(error = null)
     }
+    
+    private fun setLoadingState() {
+        _authState.value = _authState.value.copy(isLoading = true, error = null)
+    }
 }
 
 // Data class for auth state
 data class AuthState(
     val isSignedIn: Boolean = false,
-    val user: com.google.firebase.auth.FirebaseUser? = null,
+    val user: FirebaseUser? = null,
     val userProfile: UserProfile? = null,
     val isLoading: Boolean = false,
     val error: String? = null

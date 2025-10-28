@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,9 +31,8 @@ fun MainApp(
 ) {
     // Create shared ViewModels at MainApp level
     val emergencyContactViewModel: EmergencyContactViewModel = viewModel()
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
-    var showFirebaseTestScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
     var showAccidentDialog by remember { mutableStateOf(false) }
     
@@ -50,10 +50,6 @@ fun MainApp(
                 if (showPulsaBalanceScreen) {
                     PulsaBalanceScreen(
                         onBackClick = { showPulsaBalanceScreen = false }
-                    )
-                } else if (showFirebaseTestScreen) {
-                    FirebaseTestScreen(
-                        onNavigateBack = { showFirebaseTestScreen = false }
                     )
                 } else {
                     AnimatedContent(
@@ -75,10 +71,6 @@ fun MainApp(
                             0 -> HomeScreen(
                                 userName = username,
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true },
-                                onNavigateToBlackbox = { 
-                                    showPulsaBalanceScreen = false
-                                    selectedTab = 1 
-                                },
                                 showAccidentCard = showAccidentCard,
                                 onShowAccidentDialog = { showAccidentDialog = true },
                                 authViewModel = authViewModel,
@@ -92,8 +84,7 @@ fun MainApp(
                             2 -> TutorialScreen()
                             3 -> SettingsScreen(
                                 onShowAccidentDialog = { showAccidentDialog = true },
-                                onLogoutSuccess = onLogout,
-                                onNavigateToFirebaseTest = { showFirebaseTestScreen = true }
+                                onLogoutSuccess = onLogout
                             )
                         }
                     }

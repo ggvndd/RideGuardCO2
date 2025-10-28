@@ -8,8 +8,6 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 /**
@@ -58,13 +56,7 @@ class NetworkRepository {
     suspend fun submitAccidentReport(accidentReport: AccidentReportRequest): Result<AccidentReportResponse> {
         return try {
             val response = apiService.submitAccidentReport(accidentReport)
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    Result.success(responseBody)
-                } ?: Result.failure(Exception("Empty response body"))
-            } else {
-                Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
-            }
+            handleApiResponse(response)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -80,13 +72,7 @@ class NetworkRepository {
             )
             
             val response = apiService.testEndpoint(testData)
-            if (response.isSuccessful) {
-                response.body()?.let { responseBody ->
-                    Result.success(responseBody)
-                } ?: Result.failure(Exception("Empty response body"))
-            } else {
-                Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
-            }
+            handleApiResponse(response)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -99,5 +85,18 @@ class NetworkRepository {
         return AccidentReportRequest(
             phoneNumber = phoneNumber.ifBlank { "+1-555-123-4567" }
         )
+    }
+    
+    /**
+     * Helper function to handle API responses consistently
+     */
+    private fun <T> handleApiResponse(response: Response<T>): Result<T> {
+        return if (response.isSuccessful) {
+            response.body()?.let { responseBody ->
+                Result.success(responseBody)
+            } ?: Result.failure(Exception("Empty response body"))
+        } else {
+            Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+        }
     }
 }

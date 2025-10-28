@@ -48,7 +48,7 @@ class FirebaseAuthService {
         }
     }
 
-    // Delete user account
+    // Delete user account (for future use)
     suspend fun deleteAccount(): AuthResult {
         return try {
             currentUser?.delete()?.await()

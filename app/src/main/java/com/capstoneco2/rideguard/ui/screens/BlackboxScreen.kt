@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -96,11 +95,11 @@ fun BlackboxScreen(
     
     // Load emergency contacts when screen loads
     LaunchedEffect(authState.user) {
-        android.util.Log.d("BlackboxScreen", "LaunchedEffect triggered. User: ${authState.user?.uid}")
+        Log.d("BlackboxScreen", "LaunchedEffect triggered. User: ${authState.user?.uid}")
         authState.user?.uid?.let { userId ->
-            android.util.Log.d("BlackboxScreen", "Loading emergency contacts for user: $userId")
+            Log.d("BlackboxScreen", "Loading emergency contacts for user: $userId")
             emergencyContactViewModel.loadEmergencyContacts(userId)
-        } ?: android.util.Log.w("BlackboxScreen", "User UID is null, not loading emergency contacts")
+        } ?: Log.w("BlackboxScreen", "User UID is null, not loading emergency contacts")
     }
     var isDeviceOnline by remember { mutableStateOf(false) } // Changed to false by default
     var deletionRate by remember { mutableStateOf("3 Hours") }
@@ -997,7 +996,7 @@ fun EmergencyContactsSection(
         Spacer(modifier = Modifier.height(16.dp))
         
         // Loading indicator or contact list
-        android.util.Log.d("BlackboxScreen", "Rendering EmergencyContactsSection. isLoading: $isLoading, emergencyContacts.size: ${emergencyContacts.size}")
+        Log.d("BlackboxScreen", "Rendering EmergencyContactsSection. isLoading: $isLoading, emergencyContacts.size: ${emergencyContacts.size}")
         if (isLoading) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

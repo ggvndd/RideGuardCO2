@@ -21,12 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +43,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,7 +56,6 @@ import com.capstoneco2.rideguard.ui.components.BodyText
 import com.capstoneco2.rideguard.ui.components.ErrorText
 import com.capstoneco2.rideguard.ui.components.MainHeader
 import com.capstoneco2.rideguard.ui.components.PrimaryButton
-import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 
 @Composable

@@ -1,5 +1,6 @@
 package com.capstoneco2.rideguard.service
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
@@ -95,7 +96,7 @@ class EmergencyContactService {
      */
     suspend fun getEmergencyContacts(ownerUid: String): Result<List<EmergencyContactInfo>> {
         return try {
-            android.util.Log.d("EmergencyContactService", "Querying emergency contacts for ownerUid: $ownerUid")
+            Log.d("EmergencyContactService", "Querying emergency contacts for ownerUid: $ownerUid")
             
             val emergencyContactsQuery = emergencyContactsCollection
                 .whereEqualTo("ownerUid", ownerUid)
@@ -103,7 +104,7 @@ class EmergencyContactService {
                 .get()
                 .await()
             
-            android.util.Log.d("EmergencyContactService", "Found ${emergencyContactsQuery.size()} emergency contact documents")
+            Log.d("EmergencyContactService", "Found ${emergencyContactsQuery.size()} emergency contact documents")
             
             val contactInfoList = mutableListOf<EmergencyContactInfo>()
             
@@ -134,11 +135,11 @@ class EmergencyContactService {
             // Sort by addedAt in memory since we removed orderBy to avoid index requirement
             val sortedContacts = contactInfoList.sortedBy { it.addedAt }
             
-            android.util.Log.d("EmergencyContactService", "Returning ${sortedContacts.size} emergency contacts: $sortedContacts")
+            Log.d("EmergencyContactService", "Returning ${sortedContacts.size} emergency contacts: $sortedContacts")
             Result.success(sortedContacts)
             
         } catch (e: Exception) {
-            android.util.Log.e("EmergencyContactService", "Error loading emergency contacts", e)
+            Log.e("EmergencyContactService", "Error loading emergency contacts", e)
             Result.failure(e)
         }
     }

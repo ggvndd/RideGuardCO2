@@ -1,6 +1,11 @@
 package com.capstoneco2.rideguard.ui.components
 
+import android.content.Intent
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.EaseInBack
+import androidx.compose.animation.core.EaseOutBack
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,14 +17,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
@@ -36,17 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.ui.viewinterop.AndroidView
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import androidx.core.net.toUri
 
 // Enum for accident dialog states
 enum class AccidentDialogState {
@@ -70,10 +70,10 @@ fun TrafficAccidentDialog(
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn(animationSpec = tween(300)) + scaleIn(
-            animationSpec = tween(300, easing = androidx.compose.animation.core.EaseOutBack)
+            animationSpec = tween(300, easing = EaseOutBack)
         ),
         exit = fadeOut(animationSpec = tween(200)) + scaleOut(
-            animationSpec = tween(200, easing = androidx.compose.animation.core.EaseInBack)
+            animationSpec = tween(200, easing = EaseInBack)
         )
     ) {
         Dialog(
@@ -327,7 +327,8 @@ private fun LocationViewContent(
                     .clickable { 
                         // Open Google Maps app with the coordinates
                         try {
-                            val gmmIntentUri = Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude(Accident Location)")
+                            val gmmIntentUri =
+                                "geo:$latitude,$longitude?q=$latitude,$longitude(Accident Location)".toUri()
                             val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                             mapIntent.setPackage("com.google.android.apps.maps")
                             
@@ -338,7 +339,7 @@ private fun LocationViewContent(
                                 // Fallback to browser
                                 val browserIntent = Intent(
                                     Intent.ACTION_VIEW,
-                                    Uri.parse("https://maps.google.com/?q=$latitude,$longitude")
+                                    "https://maps.google.com/?q=$latitude,$longitude".toUri()
                                 )
                                 context.startActivity(browserIntent)
                             }
