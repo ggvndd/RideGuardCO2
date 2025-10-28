@@ -1,6 +1,7 @@
 package com.capstoneco2.rideguard.service
 
 import android.util.Log
+import com.capstoneco2.rideguard.config.ApiConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Call
@@ -22,19 +23,14 @@ class SmsHttpService {
     companion object {
         private const val TAG = "SmsHttpService"
         
-        // TODO: Replace this with your actual server endpoint
-        // For HTTP (development): "http://your-server.com/api/sms"
-        // For HTTPS (production): "https://your-server.com/api/sms"
-        private const val SMS_ENDPOINT = "http://your-development-server.com/api/sms"
-        
         // HTTP client configuration
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
     }
     
     private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(ApiConfig.HttpConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(ApiConfig.HttpConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(ApiConfig.HttpConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .build()
     
     /**
@@ -69,10 +65,16 @@ class SmsHttpService {
             // Create HTTP request
             val requestBody = jsonPayload.toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
-                .url(SMS_ENDPOINT)
+                .url(ApiConfig.SmsEndpoints.RECEIVE_SMS_URL)
                 .post(requestBody)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "RideGuard-Android/1.0")
+                .addHeader("Content-Type", ApiConfig.Headers.CONTENT_TYPE)
+                .addHeader("User-Agent", ApiConfig.Headers.USER_AGENT)
+                .apply {
+                    // Add API key if configured
+                    if (ApiConfig.API_KEY.isNotBlank() && ApiConfig.API_KEY != "your-api-key-here") {
+                        addHeader(ApiConfig.Headers.API_KEY_HEADER, ApiConfig.API_KEY)
+                    }
+                }
                 .build()
             
             // Execute request
@@ -130,10 +132,16 @@ class SmsHttpService {
             
             val requestBody = jsonPayload.toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
-                .url(SMS_ENDPOINT)
+                .url(ApiConfig.SmsEndpoints.RECEIVE_SMS_URL)
                 .post(requestBody)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "RideGuard-Android/1.0")
+                .addHeader("Content-Type", ApiConfig.Headers.CONTENT_TYPE)
+                .addHeader("User-Agent", ApiConfig.Headers.USER_AGENT)
+                .apply {
+                    // Add API key if configured
+                    if (ApiConfig.API_KEY.isNotBlank() && ApiConfig.API_KEY != "your-api-key-here") {
+                        addHeader(ApiConfig.Headers.API_KEY_HEADER, ApiConfig.API_KEY)
+                    }
+                }
                 .build()
             
             httpClient.newCall(request).enqueue(object : Callback {
@@ -219,9 +227,16 @@ class SmsHttpService {
             
             val requestBody = testPayload.toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
-                .url("$SMS_ENDPOINT/ping") // Assuming ping endpoint exists
+                .url(ApiConfig.SmsEndpoints.SMS_PING_URL)
                 .post(requestBody)
-                .addHeader("Content-Type", "application/json")
+                .addHeader("Content-Type", ApiConfig.Headers.CONTENT_TYPE)
+                .addHeader("User-Agent", ApiConfig.Headers.USER_AGENT)
+                .apply {
+                    // Add API key if configured
+                    if (ApiConfig.API_KEY.isNotBlank() && ApiConfig.API_KEY != "your-api-key-here") {
+                        addHeader(ApiConfig.Headers.API_KEY_HEADER, ApiConfig.API_KEY)
+                    }
+                }
                 .build()
             
             val response = httpClient.newCall(request).execute()
@@ -264,12 +279,18 @@ class SmsHttpService {
             
             val requestBody = jsonPayload.toRequestBody(JSON_MEDIA_TYPE)
             val request = Request.Builder()
-                .url("$SMS_ENDPOINT/emergency") // Special emergency endpoint
+                .url(ApiConfig.SmsEndpoints.EMERGENCY_SMS_URL)
                 .post(requestBody)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("User-Agent", "RideGuard-Android/1.0")
+                .addHeader("Content-Type", ApiConfig.Headers.CONTENT_TYPE)
+                .addHeader("User-Agent", ApiConfig.Headers.USER_AGENT)
                 .addHeader("X-Priority", "urgent") // Mark as urgent
                 .addHeader("X-Message-Type", "emergency")
+                .apply {
+                    // Add API key if configured
+                    if (ApiConfig.API_KEY.isNotBlank() && ApiConfig.API_KEY != "your-api-key-here") {
+                        addHeader(ApiConfig.Headers.API_KEY_HEADER, ApiConfig.API_KEY)
+                    }
+                }
                 .build()
             
             val response = httpClient.newCall(request).execute()
@@ -350,9 +371,15 @@ class SmsHttpService {
     suspend fun isServerReachable(): Boolean = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
-                .url("$SMS_ENDPOINT/health")
+                .url(ApiConfig.SmsEndpoints.SMS_STATUS_URL)
                 .get()
-                .addHeader("User-Agent", "RideGuard-Android/1.0")
+                .addHeader("User-Agent", ApiConfig.Headers.USER_AGENT)
+                .apply {
+                    // Add API key if configured
+                    if (ApiConfig.API_KEY.isNotBlank() && ApiConfig.API_KEY != "your-api-key-here") {
+                        addHeader(ApiConfig.Headers.API_KEY_HEADER, ApiConfig.API_KEY)
+                    }
+                }
                 .build()
             
             val response = httpClient.newCall(request).execute()
@@ -370,7 +397,7 @@ class SmsHttpService {
     /**
      * Get current endpoint URL (for debugging)
      */
-    fun getEndpointUrl(): String = SMS_ENDPOINT
+    fun getEndpointUrl(): String = ApiConfig.SmsEndpoints.RECEIVE_SMS_URL
     
     /**
      * Get HTTP client configuration info

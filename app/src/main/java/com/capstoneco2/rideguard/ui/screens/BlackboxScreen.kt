@@ -759,11 +759,11 @@ private fun BlackBoxDeviceCard(
         ) {
             // Device Icon
             
-            // Custom device icon - no background rectangle
+            // Custom device icon - uses painterResource for vector drawables
             Icon(
                 painter = painterResource(id = R.drawable.box),
                 contentDescription = "RideGuard Device", 
-                tint = Color.White,
+                tint = Color.White, // Apply white tint for visibility on primary background
                 modifier = Modifier.size(40.dp)
             )
             
