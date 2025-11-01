@@ -1,5 +1,6 @@
 package com.capstoneco2.rideguard.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -359,37 +360,29 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             
-            // Test Gateway Connection Button
+            // Test Emergency Contact Notification Button
             SecondaryButton(
-                text = if (isApiTesting) "Testing Gateway..." else "Test SMS Gateway Connection",
+                text = "Test Emergency Contact Alert",
                 onClick = {
-                    if (!isApiTesting) {
-                        isApiTesting = true
-                        apiTestResult = null
-                        coroutineScope.launch {
-                            try {
-                                val result = smsService.testGatewayConnection(context)
-                                apiTestResult = if (result.isSuccess) {
-                                    "✅ ${result.getOrNull()}"
-                                } else {
-                                    "❌ Gateway Test Failed: ${result.exceptionOrNull()?.message}"
-                                }
-                            } catch (e: Exception) {
-                                apiTestResult = "❌ Gateway Error: ${e.message}"
-                            } finally {
-                                isApiTesting = false
-                            }
-                        }
+                    try {
+                        NotificationHelper.showEmergencyContactNotification(
+                            context = context,
+                            crashVictimName = "Alex Johnson",
+                            latitude = -7.7956,
+                            longitude = 110.3695
+                        )
+                        apiTestResult = "✅ Emergency Contact alert sent! Tap it to experience the emergency contact perspective."
+                    } catch (e: Exception) {
+                        apiTestResult = "❌ Emergency Contact Notification Error: ${e.message}"
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isApiTesting
+                modifier = Modifier.fillMaxWidth()
             )
             
             BodyText(
-                text = "Test SMS gateway connection to server endpoint.",
+                text = "Test emergency contact notification (orange, shows Alex Johnson crashed, you help them).",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
@@ -397,65 +390,9 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Phone Number Input Field
-            OutlinedTextField(
-                value = phoneNumber,
-                onValueChange = { phoneNumber = it },
-                label = { 
-                    Text(
-                        "Phone Number",
-                        style = MaterialTheme.typography.bodyMedium
-                    ) 
-                },
-                placeholder = { 
-                    Text(
-                        "+1-555-123-4567",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    ) 
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-            )
+
             
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Submit Accident Report Button
-            SecondaryButton(
-                text = if (isApiTesting) "Submitting..." else "Submit Test Accident Report",
-                onClick = {
-                    if (!isApiTesting) {
-                        isApiTesting = true
-                        apiTestResult = null
-                        coroutineScope.launch {
-                            try {
-                                val sampleReport = networkRepository.createSampleAccidentReport(phoneNumber)
-                                val result = networkRepository.submitAccidentReport(sampleReport)
-                                apiTestResult = if (result.isSuccess) {
-                                    "✅ Accident Report Submitted Successfully!"
-                                } else {
-                                    "❌ Submit Failed: ${result.exceptionOrNull()?.message}"
-                                }
-                            } catch (e: Exception) {
-                                apiTestResult = "❌ Error: ${e.message}"
-                            } finally {
-                                isApiTesting = false
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isApiTesting
-            )
-            
-            BodyText(
-                text = "Submit a sample accident report with JSON payload to the API.",
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
+
             
             // Display API test result
             apiTestResult?.let { result ->

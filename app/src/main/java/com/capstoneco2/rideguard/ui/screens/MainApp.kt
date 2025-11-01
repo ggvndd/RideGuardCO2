@@ -24,6 +24,7 @@ import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
 import android.content.Intent
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun MainApp(
@@ -34,6 +35,7 @@ fun MainApp(
 ) {
     // Create shared ViewModels at MainApp level
     val emergencyContactViewModel: EmergencyContactViewModel = viewModel()
+    val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
@@ -42,6 +44,11 @@ fun MainApp(
     // State for crash data from notification
     var crashLatitude by remember { mutableStateOf(-7.7956) } // Default coordinates
     var crashLongitude by remember { mutableStateOf(110.3695) }
+    var userRole by remember { mutableStateOf(com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM) }
+    var crashVictimName by remember { mutableStateOf("Unknown User") }
+    
+    // State for emergency help confirmation
+    var helpConfirmed by remember { mutableStateOf(false) }
     
     // Check for crash notification intent
     LaunchedEffect(intent) {
@@ -50,6 +57,17 @@ fun MainApp(
                 // Extract crash data from intent
                 crashLatitude = notificationIntent.getDoubleExtra("latitude", -7.7956)
                 crashLongitude = notificationIntent.getDoubleExtra("longitude", 110.3695)
+                
+                // Determine user role from intent
+                val roleFromIntent = notificationIntent.getStringExtra("user_role") ?: "crash_victim"
+                userRole = if (roleFromIntent == "emergency_contact") {
+                    com.capstoneco2.rideguard.ui.components.UserRole.EMERGENCY_CONTACT
+                } else {
+                    com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM
+                }
+                
+                // Extract crash victim name for emergency contacts
+                crashVictimName = notificationIntent.getStringExtra("crash_victim_name") ?: "Unknown User"
                 
                 // Show accident dialog immediately for crash notifications
                 showAccidentDialog = true
@@ -143,10 +161,63 @@ fun MainApp(
             isVisible = showAccidentDialog,
             onClose = { 
                 showAccidentDialog = false
-                showAccidentCard = true // Show the card on home screen after closing
+                if (userRole == com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM) {
+                    showAccidentCard = true // Show the card on home screen after closing for crash victim
+                }
             },
             latitude = crashLatitude,
-            longitude = crashLongitude
+            longitude = crashLongitude,
+            userRole = userRole,
+            crashVictimName = crashVictimName,
+            onEmergencyServicesCalled = {
+                // Cross-device notification logic
+                when (userRole) {
+                    com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM -> {
+                        // Crash victim called emergency services → Notify emergency contacts
+                        com.capstoneco2.rideguard.notification.NotificationHelper.showEmergencyNotification(
+                            context = context,
+                            title = "Emergency Services Contacted",
+                            body = "${username} has contacted emergency services. Help is being dispatched to their location.",
+                            isCrashData = false
+                        )
+                    }
+                    com.capstoneco2.rideguard.ui.components.UserRole.EMERGENCY_CONTACT -> {
+                        // Emergency contact called for crash victim → Notify crash victim
+                        com.capstoneco2.rideguard.notification.NotificationHelper.showEmergencyNotification(
+                            context = context,
+                            title = "Help Is On The Way",
+                            body = "Your emergency contact has called emergency services for you. Help has been dispatched to your location.",
+                            isCrashData = false
+                        )
+                    }
+                }
+            },
+            onHelpConfirmed = {
+                helpConfirmed = true
+                showAccidentDialog = false
+                
+                // Send final confirmation notification to all parties
+                when (userRole) {
+                    com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM -> {
+                        // Crash victim confirmed help → Notify emergency contacts
+                        com.capstoneco2.rideguard.notification.NotificationHelper.showEmergencyNotification(
+                            context = context,
+                            title = "✅ Emergency Response Confirmed",
+                            body = "${username} has confirmed that emergency services are on the way. The emergency is being handled.",
+                            isCrashData = false
+                        )
+                    }
+                    com.capstoneco2.rideguard.ui.components.UserRole.EMERGENCY_CONTACT -> {
+                        // Emergency contact confirmed help → Notify crash victim  
+                        com.capstoneco2.rideguard.notification.NotificationHelper.showEmergencyNotification(
+                            context = context,
+                            title = "✅ Your Safety Confirmed",
+                            body = "Your emergency contact has confirmed that help is on the way. Emergency services are responding to your location.",
+                            isCrashData = false
+                        )
+                    }
+                }
+            }
         )
     }
 
