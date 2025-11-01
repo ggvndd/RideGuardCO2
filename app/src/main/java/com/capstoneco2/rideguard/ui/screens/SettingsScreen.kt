@@ -57,9 +57,12 @@ import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.network.NetworkRepository
 import com.capstoneco2.rideguard.service.SmsService
 import com.capstoneco2.rideguard.notification.NotificationHelper
+import com.capstoneco2.rideguard.service.EmergencyContactServiceAdapter
+import com.capstoneco2.rideguard.service.UserProfileService
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun SettingsScreen(
@@ -79,6 +82,8 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val networkRepository = remember { NetworkRepository.getInstance() }
     val smsService = remember { SmsService() }
+    val userProfileService = remember { UserProfileService() }
+    val emergencyContactService = remember { EmergencyContactServiceAdapter(userProfileService) }
     
     // Load gateway setting on startup
     LaunchedEffect(Unit) {
@@ -333,28 +338,63 @@ fun SettingsScreen(
             SecondaryButton(
                 text = "Test Crash Notification",
                 onClick = {
-                    try {
-                        NotificationHelper.showEmergencyNotification(
-                            context = context,
-                            title = "🚨 CRASH DETECTED",
-                            body = "From: +1-555-CRASH — crash_id: TEST, rideguard_id: DEMO, longitude: -7.7676, latitude: 110.3698. Emergency response required!",
-                            isCrashData = true,
-                            crashId = "TEST",
-                            rideguardId = "DEMO", 
-                            userId = "user123",
-                            latitude = -7.7676,
-                            longitude = 110.3698
-                        )
-                        apiTestResult = "✅ Crash notification sent! Tap it to see the accident dialog with crash location."
-                    } catch (e: Exception) {
-                        apiTestResult = "❌ Notification Error: ${e.message}"
+                    coroutineScope.launch {
+                        try {
+                            // Show crash notification for the victim
+                            NotificationHelper.showEmergencyNotification(
+                                context = context,
+                                title = "🚨 CRASH DETECTED",
+                                body = "From: +1-555-CRASH — crash_id: TEST, rideguard_id: DEMO, longitude: -7.7676, latitude: 110.3698. Emergency response required!",
+                                isCrashData = true,
+                                crashId = "TEST",
+                                rideguardId = "DEMO", 
+                                userId = "user123",
+                                latitude = -7.7676,
+                                longitude = 110.3698
+                            )
+                            
+                            // Get current user and notify their emergency contacts
+                            val currentUser = FirebaseAuth.getInstance().currentUser
+                            if (currentUser != null) {
+                                val currentUserProfile = userProfileService.getUserProfile(currentUser.uid).getOrNull()
+                                val victimName = currentUserProfile?.username ?: currentUser.displayName ?: "Unknown User"
+                                
+                                val emergencyContacts = emergencyContactService.getEmergencyContacts(currentUser.uid).getOrNull()
+                                if (!emergencyContacts.isNullOrEmpty()) {
+                                    var notifiedContacts = 0
+                                    
+                                    // Send notification to each emergency contact
+                                    // Note: In a real app, this would use FCM to send to other devices
+                                    // For testing, we create local notifications to simulate multiple devices
+                                    emergencyContacts.forEach { contact ->
+                                        NotificationHelper.showEmergencyContactNotification(
+                                            context = context,
+                                            crashVictimName = victimName,
+                                            latitude = -7.7676,
+                                            longitude = 110.3698,
+                                            crashId = "TEST_EC_${contact.contactId}",
+                                            rideguardId = "EMERGENCY_${contact.username}"
+                                        )
+                                        notifiedContacts++
+                                    }
+                                    
+                                    apiTestResult = "✅ Crash notification sent! Also notified $notifiedContacts emergency contact(s): ${emergencyContacts.map { it.username }.joinToString(", ")}. Tap notifications to test both perspectives."
+                                } else {
+                                    apiTestResult = "✅ Crash notification sent! No emergency contacts configured to notify. Add emergency contacts in the Home screen."
+                                }
+                            } else {
+                                apiTestResult = "✅ Crash notification sent! (Not logged in - cannot notify emergency contacts)"
+                            }
+                        } catch (e: Exception) {
+                            apiTestResult = "❌ Notification Error: ${e.message}"
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
             
             BodyText(
-                text = "Test crash notification style (persistent, red, non-dismissible).",
+                text = "Test crash notification (persistent, red) + notify your emergency contacts if configured.",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()

@@ -161,9 +161,8 @@ fun MainApp(
             isVisible = showAccidentDialog,
             onClose = { 
                 showAccidentDialog = false
-                if (userRole == com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM) {
-                    showAccidentCard = true // Show the card on home screen after closing for crash victim
-                }
+                // Show accident card on home screen for both crash victim and emergency contact
+                showAccidentCard = true
             },
             latitude = crashLatitude,
             longitude = crashLongitude,
