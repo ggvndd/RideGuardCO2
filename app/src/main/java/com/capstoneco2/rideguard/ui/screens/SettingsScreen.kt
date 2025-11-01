@@ -1,6 +1,6 @@
 package com.capstoneco2.rideguard.ui.screens
 
-import android.content.Intent
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,9 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -40,7 +38,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,6 +56,8 @@ import com.capstoneco2.rideguard.service.SmsService
 import com.capstoneco2.rideguard.notification.NotificationHelper
 import com.capstoneco2.rideguard.service.EmergencyContactServiceAdapter
 import com.capstoneco2.rideguard.service.UserProfileService
+import com.capstoneco2.rideguard.service.BackendNotificationService
+import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
@@ -84,6 +83,7 @@ fun SettingsScreen(
     val smsService = remember { SmsService() }
     val userProfileService = remember { UserProfileService() }
     val emergencyContactService = remember { EmergencyContactServiceAdapter(userProfileService) }
+    val backendNotificationService = remember { BackendNotificationService() }
     
     // Load gateway setting on startup
     LaunchedEffect(Unit) {
@@ -361,24 +361,67 @@ fun SettingsScreen(
                                 
                                 val emergencyContacts = emergencyContactService.getEmergencyContacts(currentUser.uid).getOrNull()
                                 if (!emergencyContacts.isNullOrEmpty()) {
-                                    var notifiedContacts = 0
+                                    var realNotifications = 0
+                                    var localNotifications = 0
+                                    val notificationResults = mutableListOf<String>()
                                     
-                                    // Send notification to each emergency contact
-                                    // Note: In a real app, this would use FCM to send to other devices
-                                    // For testing, we create local notifications to simulate multiple devices
+                                    // Try to send real push notifications via backend to each emergency contact
                                     emergencyContacts.forEach { contact ->
-                                        NotificationHelper.showEmergencyContactNotification(
-                                            context = context,
-                                            crashVictimName = victimName,
-                                            latitude = -7.7676,
-                                            longitude = 110.3698,
-                                            crashId = "TEST_EC_${contact.contactId}",
-                                            rideguardId = "EMERGENCY_${contact.username}"
-                                        )
-                                        notifiedContacts++
+                                        if (backendNotificationService.isBackendConfigured()) {
+                                            // Send real push notification via Next.js backend
+                                            val result = backendNotificationService.sendEmergencyNotificationToUser(
+                                                context = context,
+                                                contactUserId = contact.uid,
+                                                crashVictimName = victimName,
+                                                latitude = -7.7676,
+                                                longitude = 110.3698,
+                                                crashId = "BACKEND_CRASH_${contact.contactId}"
+                                            )
+                                            
+                                            if (result.isSuccess) {
+                                                val deviceCount = result.getOrNull() ?: 0
+                                                realNotifications += deviceCount
+                                                notificationResults.add("${contact.username}: $deviceCount device(s)")
+                                            } else {
+                                                notificationResults.add("${contact.username}: Failed (${result.exceptionOrNull()?.message})")
+                                                // Fallback to local notification for this contact
+                                                NotificationHelper.showEmergencyContactNotification(
+                                                    context = context,
+                                                    crashVictimName = victimName,
+                                                    latitude = -7.7676,
+                                                    longitude = 110.3698,
+                                                    crashId = "FALLBACK_${contact.contactId}",
+                                                    rideguardId = "EMERGENCY_${contact.username}"
+                                                )
+                                                localNotifications++
+                                            }
+                                        } else {
+                                            // Backend not configured - use local notifications only
+                                            NotificationHelper.showEmergencyContactNotification(
+                                                context = context,
+                                                crashVictimName = victimName,
+                                                latitude = -7.7676,
+                                                longitude = 110.3698,
+                                                crashId = "LOCAL_${contact.contactId}",
+                                                rideguardId = "EMERGENCY_${contact.username}"
+                                            )
+                                            localNotifications++
+                                            notificationResults.add("${contact.username}: Local notification")
+                                        }
                                     }
                                     
-                                    apiTestResult = "✅ Crash notification sent! Also notified $notifiedContacts emergency contact(s): ${emergencyContacts.map { it.username }.joinToString(", ")}. Tap notifications to test both perspectives."
+                                    val backendStatus = backendNotificationService.getConfigurationStatus()
+                                    apiTestResult = buildString {
+                                        append("✅ Crash notification sent!\n")
+                                        append("$backendStatus\n")
+                                        if (realNotifications > 0) {
+                                            append("📱 Real push notifications sent via backend to $realNotifications device(s)\n")
+                                        }
+                                        if (localNotifications > 0) {
+                                            append("📳 Local notifications created: $localNotifications\n")
+                                        }
+                                        append("Contacts: ${notificationResults.joinToString(", ")}")
+                                    }
                                 } else {
                                     apiTestResult = "✅ Crash notification sent! No emergency contacts configured to notify. Add emergency contacts in the Home screen."
                                 }
@@ -430,9 +473,39 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-
+            // Backend Notification Configuration Status Button
+            SecondaryButton(
+                text = "Check Backend Notification Config",
+                onClick = {
+                    coroutineScope.launch {
+                        val status = backendNotificationService.getConfigurationStatus()
+                        apiTestResult = if (backendNotificationService.isBackendConfigured()) {
+                            try {
+                                val testResult = backendNotificationService.testBackendConnection()
+                                if (testResult.isSuccess) {
+                                    "$status\n\n📱 Backend connection successful! Emergency contacts on other devices will receive push notifications via your Next.js server."
+                                } else {
+                                    "$status\n\n⚠️ Backend configured but connection failed: ${testResult.exceptionOrNull()?.message}"
+                                }
+                            } catch (e: Exception) {
+                                "$status\n\n❌ Error testing backend: ${e.message}"
+                            }
+                        } else {
+                            "$status\n\n⚠️ To enable real push notifications via your backend:\n1. Deploy your Next.js backend (Vercel, Railway, etc.)\n2. Update BACKEND_BASE_URL in BackendNotificationService.kt\n3. Ensure /api/notify endpoint is accessible\n\nCurrently using local notifications only (same device testing)."
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
             
-
+            BodyText(
+                text = "Check if your Next.js backend FCM service is configured and accessible.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
             
             // Display API test result
             apiTestResult?.let { result ->

@@ -138,8 +138,6 @@ class MainActivity : ComponentActivity() {
         
         lifecycleScope.launch {
             try {
-                // TODO: Get current user ID from AuthViewModel
-                // For now, we'll use a placeholder or wait for authentication
                 
                 // Mock implementation - replace with actual user ID when available
                 val currentUserId = getCurrentUserId()
@@ -161,7 +159,6 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     Log.d(TAG, "User not authenticated yet, FCM token will be saved after login")
-                    // TODO: Store token temporarily and save it after user authentication
                     storeTokenForLaterSave(token)
                 }
             } catch (e: Exception) {

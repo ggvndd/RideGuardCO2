@@ -25,6 +25,7 @@ import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
 import android.content.Intent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import com.capstoneco2.rideguard.service.EmergencyNotificationManager
 
 @Composable
 fun MainApp(
@@ -36,6 +37,7 @@ fun MainApp(
     // Create shared ViewModels at MainApp level
     val emergencyContactViewModel: EmergencyContactViewModel = viewModel()
     val context = LocalContext.current
+    val emergencyNotificationManager = remember { EmergencyNotificationManager() }
     var selectedTab by remember { mutableIntStateOf(0) }
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
@@ -74,6 +76,10 @@ fun MainApp(
                 
                 // Navigate to blackbox screen (crash management)
                 selectedTab = 1
+                
+                // Dismiss emergency notification since user is now in the app
+                val crashId = notificationIntent.getStringExtra("crash_id") ?: "unknown"
+                emergencyNotificationManager.dismissEmergencyNotificationOnAppEnter(context, crashId)
             }
         }
     }
@@ -169,6 +175,10 @@ fun MainApp(
             userRole = userRole,
             crashVictimName = crashVictimName,
             onEmergencyServicesCalled = {
+                // Dismiss the emergency notification since services are being contacted
+                val crashId = intent?.getStringExtra("crash_id") ?: "emergency_services_called"
+                emergencyNotificationManager.dismissEmergencyNotificationOnConfirmed(context, crashId)
+                
                 // Cross-device notification logic
                 when (userRole) {
                     com.capstoneco2.rideguard.ui.components.UserRole.CRASH_VICTIM -> {
@@ -194,6 +204,10 @@ fun MainApp(
             onHelpConfirmed = {
                 helpConfirmed = true
                 showAccidentDialog = false
+                
+                // Dismiss the emergency notification since help is confirmed
+                val crashId = intent?.getStringExtra("crash_id") ?: "help_confirmed"
+                emergencyNotificationManager.dismissEmergencyNotificationOnConfirmed(context, crashId)
                 
                 // Send final confirmation notification to all parties
                 when (userRole) {
