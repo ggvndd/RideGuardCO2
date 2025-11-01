@@ -39,12 +39,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val title = remoteMessage.data["title"] ?: "RideGuard Alert"
             val body = remoteMessage.data["body"] ?: "New notification"
             
-            // Check if this is an emergency notification based on data
+            // Check if this is an emergency notification based on data OR body parsing
             val isEmergency = remoteMessage.data["emergency_type"] == "crash" || 
-                             remoteMessage.data["user_role"] == "emergency_contact"
+                             remoteMessage.data["user_role"] == "emergency_contact" ||
+                             isEmergencyFromBody(body)
             
             if (isEmergency) {
-                handleEmergencyNotification(remoteMessage.data, title, body)
+                // Try to get data from explicit fields first, then parse from body
+                val emergencyData = if (remoteMessage.data.containsKey("emergency_type")) {
+                    remoteMessage.data.toMutableMap()
+                } else {
+                    parseEmergencyDataFromBody(body)
+                }
+                handleEmergencyNotification(emergencyData, title, body)
             } else {
                 showNotification(title, body, INFO_CHANNEL_ID)
             }
@@ -193,5 +200,64 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         
         // You can implement this to automatically update the FCM token in your backend
         // For now, the MainActivity handles this when the user logs in
+    }
+    
+    /**
+     * Check if the message body indicates an emergency notification
+     */
+    private fun isEmergencyFromBody(body: String): Boolean {
+        return body.contains("emergency contact", ignoreCase = true) && 
+               body.contains("traffic accident", ignoreCase = true) &&
+               body.contains("Location:", ignoreCase = true)
+    }
+    
+    /**
+     * Parse emergency data from FCM body text
+     * Expected format: "Your emergency contact [name] has been in a traffic accident. Location: [lat], [lng]. Tap to help them get emergency assistance."
+     */
+    private fun parseEmergencyDataFromBody(body: String): MutableMap<String, String> {
+        Log.d(TAG, "🔍 Parsing emergency data from body: $body")
+        
+        val data = mutableMapOf<String, String>()
+        
+        try {
+            // Parse crash victim name from "Your emergency contact [name] has been"
+            val namePattern = "Your emergency contact\\s+([\\w\\s]+)\\s+has been".toRegex(RegexOption.IGNORE_CASE)
+            val nameMatch = namePattern.find(body)
+            val crashVictimName = nameMatch?.groupValues?.get(1)?.trim() ?: "Unknown"
+            
+            // Parse location from "Location: [lat], [lng]"
+            val locationPattern = "Location:\\s*([\\-\\d.]+),\\s*([\\-\\d.]+)".toRegex(RegexOption.IGNORE_CASE)
+            val locationMatch = locationPattern.find(body)
+            val latitude = locationMatch?.groupValues?.get(1) ?: "-7.7956"
+            val longitude = locationMatch?.groupValues?.get(2) ?: "110.3695"
+            
+            // Set emergency data
+            data["emergency_type"] = "crash"
+            data["user_role"] = "emergency_contact"
+            data["crash_victim_name"] = crashVictimName
+            data["latitude"] = latitude
+            data["longitude"] = longitude
+            data["crash_id"] = "PARSED_${System.currentTimeMillis()}"
+            data["navigate_to"] = "Blackbox"
+            
+            Log.d(TAG, "✅ Parsed emergency data:")
+            Log.d(TAG, "   Crash victim: $crashVictimName")
+            Log.d(TAG, "   Location: $latitude, $longitude")
+            Log.d(TAG, "   User role: emergency_contact")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error parsing emergency data from body: ${e.message}")
+            // Provide fallback data
+            data["emergency_type"] = "crash"
+            data["user_role"] = "emergency_contact"
+            data["crash_victim_name"] = "Emergency Contact"
+            data["latitude"] = "-7.7956"
+            data["longitude"] = "110.3695"
+            data["crash_id"] = "FALLBACK_${System.currentTimeMillis()}"
+            data["navigate_to"] = "Blackbox"
+        }
+        
+        return data
     }
 }
