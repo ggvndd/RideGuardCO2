@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,6 +61,7 @@ fun HomeScreen(
     authViewModel: AuthViewModel = viewModel(),
     emergencyContactViewModel: EmergencyContactViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     var isBlackboxOnline by remember { mutableStateOf(true) }
     var batteryLevel by remember { mutableStateOf("100%") }
     var blackboxSerialNumber by remember { mutableStateOf("Lorem Ipsum") }

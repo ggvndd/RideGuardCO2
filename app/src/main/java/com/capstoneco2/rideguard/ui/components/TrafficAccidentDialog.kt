@@ -275,11 +275,12 @@ private fun AccidentDetectedContent(
                 Text(
                     text = when (userRole) {
                         UserRole.CRASH_VICTIM -> "Call Emergency Services"
-                        UserRole.EMERGENCY_CONTACT -> "Call Emergency for ${crashVictimName}"
+                        UserRole.EMERGENCY_CONTACT -> "Call Emergency Services"
                     },
                     color = MaterialTheme.colorScheme.error,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
                 )
             }
             
@@ -467,7 +468,7 @@ private fun EmergencyServicesContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "Emergency Services"
-                UserRole.EMERGENCY_CONTACT -> "Call Emergency for ${crashVictimName}"
+                UserRole.EMERGENCY_CONTACT -> "Emergency Services"
             },
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
@@ -536,7 +537,7 @@ private fun EmergencyServicesContent(
                         RoundedCornerShape(12.dp)
                     )
                     .clickable {
-                        val intent = Intent(Intent.ACTION_CALL).apply {
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
                             data = android.net.Uri.parse("tel:110")
                         }
                         context.startActivity(intent)
@@ -549,7 +550,8 @@ private fun EmergencyServicesContent(
                     text = "Call Police (110)",
                     color = Color.White,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
                 )
             }
             

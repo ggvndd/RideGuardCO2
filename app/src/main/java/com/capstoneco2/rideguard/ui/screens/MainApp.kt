@@ -60,7 +60,11 @@ fun MainApp(
                 android.util.Log.d("MainApp", "🎯   $key = ${notificationIntent.extras?.get(key)}")
             }
             
-            if (notificationIntent.getStringExtra("emergency_type") == "crash") {
+            val emergencyType = notificationIntent.getStringExtra("emergency_type")
+            val userRoleString = notificationIntent.getStringExtra("user_role")
+            android.util.Log.d("MainApp", "🔍 Emergency type: '$emergencyType', User role: '$userRoleString'")
+            
+            if (emergencyType == "crash") {
                 android.util.Log.d("MainApp", "🚨 Processing crash notification intent")
                 // Extract crash data from intent
                 crashLatitude = notificationIntent.getDoubleExtra("latitude", -7.7956)
@@ -86,8 +90,10 @@ fun MainApp(
                 // Dismiss emergency notification since user is now in the app
                 val crashId = notificationIntent.getStringExtra("crash_id") ?: "unknown"
                 emergencyNotificationManager.dismissEmergencyNotificationOnAppEnter(context, crashId)
+            } else {
+                android.util.Log.d("MainApp", "❌ Intent does not match crash emergency type. Emergency type: '$emergencyType'")
             }
-        }
+        } ?: android.util.Log.d("MainApp", "❌ No intent received")
     }
     
     // Emergency contacts are now managed by EmergencyContactViewModel
@@ -210,6 +216,7 @@ fun MainApp(
             onHelpConfirmed = {
                 helpConfirmed = true
                 showAccidentDialog = false
+                showAccidentCard = false  // Hide the accident card on home screen too
                 
                 // Dismiss the emergency notification since help is confirmed
                 val crashId = intent?.getStringExtra("crash_id") ?: "help_confirmed"

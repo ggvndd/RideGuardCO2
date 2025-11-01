@@ -25,11 +25,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private val emergencyNotificationManager = EmergencyNotificationManager()
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        Log.d(TAG, "From: ${remoteMessage.from}")
+        Log.d(TAG, "📱 FCM Message received from: ${remoteMessage.from}")
 
         // Check if message contains a data payload
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d(TAG, "Message data payload: ${remoteMessage.data}")
+            Log.d(TAG, "📊 Message data payload: ${remoteMessage.data}")
+            
+            // Log each data field individually for debugging
+            remoteMessage.data.forEach { (key, value) ->
+                Log.d(TAG, "📊   $key = $value")
+            }
             
             val title = remoteMessage.data["title"] ?: "RideGuard Alert"
             val body = remoteMessage.data["body"] ?: "New notification"

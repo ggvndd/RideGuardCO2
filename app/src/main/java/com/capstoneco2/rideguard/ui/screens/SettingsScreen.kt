@@ -48,6 +48,7 @@ import com.capstoneco2.rideguard.ui.components.MainHeader
 import com.capstoneco2.rideguard.ui.components.PrimaryButton
 import com.capstoneco2.rideguard.ui.components.SectionHeader
 import com.capstoneco2.rideguard.ui.components.SecondaryButton
+
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
@@ -62,6 +63,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import com.google.firebase.auth.FirebaseAuth
+import android.content.Intent
+import com.capstoneco2.rideguard.MainActivity
 
 @Composable
 fun SettingsScreen(
@@ -471,6 +474,41 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Test Emergency Contact Dialog Button
+            SecondaryButton(
+                text = "Test Emergency Contact Dialog",
+                onClick = {
+                    try {
+                        // Create intent that mimics emergency contact notification tap
+                        val intent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            putExtra("emergency_type", "crash")
+                            putExtra("user_role", "emergency_contact")
+                            putExtra("crash_victim_name", "Alex Johnson")
+                            putExtra("crash_id", "TEST_DIALOG_EC")
+                            putExtra("rideguard_id", "TEST_EC_DIALOG")
+                            putExtra("latitude", -7.7956)
+                            putExtra("longitude", 110.3695)
+                            putExtra("navigate_to", "Blackbox")
+                        }
+                        context.startActivity(intent)
+                        apiTestResult = "✅ Emergency Contact Dialog launched! Check if the dialog appears."
+                    } catch (e: Exception) {
+                        apiTestResult = "❌ Dialog Launch Error: ${e.message}"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            BodyText(
+                text = "Test the emergency contact dialog/card directly (shows Alex Johnson crashed, you help them).",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
             Spacer(modifier = Modifier.height(16.dp))
             
             // Backend Notification Configuration Status Button
@@ -531,7 +569,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun UserProfileCard(
+fun UserProfileCard(
     userName: String,
     onSignOutClick: () -> Unit
 ) {
