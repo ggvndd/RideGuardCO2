@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
     
     private val fcmTokenService = FCMTokenService(Firebase.firestore)
     private val smsService = SmsService()
+    private var intentUpdateCallback: ((Intent?) -> Unit)? = null
     
     companion object {
         private const val TAG = "MainActivity"
@@ -86,13 +88,26 @@ class MainActivity : ComponentActivity() {
         
         enableEdgeToEdge()
         setContent {
+            // Create a state to track the current intent
+            var currentIntent by remember { mutableStateOf(intent) }
+            
+            // Set up the callback to update intent state
+            DisposableEffect(Unit) {
+                intentUpdateCallback = { newIntent ->
+                    currentIntent = newIntent
+                }
+                onDispose {
+                    intentUpdateCallback = null
+                }
+            }
+            
             MyAppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MyApp(
-                        intent = intent,
+                        intent = currentIntent,
                         onAuthSuccess = {
                             savePendingFCMToken()
                             performPeriodicFCMTokenCleanup()
@@ -101,6 +116,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        // Update the intent so it can be processed by the composable
+        setIntent(intent)
+        
+        Log.d(TAG, "📱 MainActivity.onNewIntent called")
+        intent?.extras?.keySet()?.forEach { key ->
+            Log.d(TAG, "📱 Intent extra: $key = ${intent.extras?.get(key)}")
+        }
+        
+        // Notify the composable about the new intent
+        intentUpdateCallback?.invoke(intent)
     }
     
     private fun retrieveFCMToken() {

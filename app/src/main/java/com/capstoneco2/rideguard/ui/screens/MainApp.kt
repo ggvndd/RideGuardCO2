@@ -55,7 +55,13 @@ fun MainApp(
     // Check for crash notification intent
     LaunchedEffect(intent) {
         intent?.let { notificationIntent ->
+            android.util.Log.d("MainApp", "🎯 Intent received with extras:")
+            notificationIntent.extras?.keySet()?.forEach { key ->
+                android.util.Log.d("MainApp", "🎯   $key = ${notificationIntent.extras?.get(key)}")
+            }
+            
             if (notificationIntent.getStringExtra("emergency_type") == "crash") {
+                android.util.Log.d("MainApp", "🚨 Processing crash notification intent")
                 // Extract crash data from intent
                 crashLatitude = notificationIntent.getDoubleExtra("latitude", -7.7956)
                 crashLongitude = notificationIntent.getDoubleExtra("longitude", 110.3695)
