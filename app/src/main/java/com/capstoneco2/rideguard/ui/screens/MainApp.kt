@@ -22,10 +22,13 @@ import com.capstoneco2.rideguard.ui.components.TrafficAccidentDialog
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
+import android.content.Intent
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun MainApp(
     username: String,
+    intent: Intent? = null,
     onLogout: () -> Unit = { },
     authViewModel: AuthViewModel = viewModel()
 ) {
@@ -35,6 +38,27 @@ fun MainApp(
     var showPulsaBalanceScreen by remember { mutableStateOf(false) }
     var showAccidentCard by remember { mutableStateOf(false) }
     var showAccidentDialog by remember { mutableStateOf(false) }
+    
+    // State for crash data from notification
+    var crashLatitude by remember { mutableStateOf(-7.7956) } // Default coordinates
+    var crashLongitude by remember { mutableStateOf(110.3695) }
+    
+    // Check for crash notification intent
+    LaunchedEffect(intent) {
+        intent?.let { notificationIntent ->
+            if (notificationIntent.getStringExtra("emergency_type") == "crash") {
+                // Extract crash data from intent
+                crashLatitude = notificationIntent.getDoubleExtra("latitude", -7.7956)
+                crashLongitude = notificationIntent.getDoubleExtra("longitude", 110.3695)
+                
+                // Show accident dialog immediately for crash notifications
+                showAccidentDialog = true
+                
+                // Navigate to blackbox screen (crash management)
+                selectedTab = 1
+            }
+        }
+    }
     
     // Emergency contacts are now managed by EmergencyContactViewModel
 
@@ -117,17 +141,12 @@ fun MainApp(
         // Traffic Accident Dialog - Global dialog that can be triggered from anywhere
         TrafficAccidentDialog(
             isVisible = showAccidentDialog,
-            onDismiss = { showAccidentDialog = false },
-            onCheckLocation = { 
-                // Handle check location logic
-            },
-            onCallEmergencyServices = { 
-                // Handle emergency services logic
-            },
             onClose = { 
                 showAccidentDialog = false
                 showAccidentCard = true // Show the card on home screen after closing
-            }
+            },
+            latitude = crashLatitude,
+            longitude = crashLongitude
         )
     }
 

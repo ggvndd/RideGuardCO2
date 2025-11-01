@@ -308,7 +308,8 @@ fun SettingsScreen(
                         NotificationHelper.showEmergencyNotification(
                             context = context,
                             title = "Emergency Detection Test",
-                            body = "From: +1-555-CRASH — crash_id: TEST, rideguard_id: DEMO, Emergency keywords detected in SMS message. Tap to view details."
+                            body = "From: +1-555-TEST — Emergency keywords detected in SMS message. Tap to view details.",
+                            isCrashData = false
                         )
                         apiTestResult = "✅ Emergency notification sent! Check your notification panel."
                     } catch (e: Exception) {
@@ -319,7 +320,40 @@ fun SettingsScreen(
             )
             
             BodyText(
-                text = "Test the emergency notification style and behavior.",
+                text = "Test regular emergency notification style (dismissible).",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Test Crash Notification Button
+            SecondaryButton(
+                text = "Test Crash Notification",
+                onClick = {
+                    try {
+                        NotificationHelper.showEmergencyNotification(
+                            context = context,
+                            title = "🚨 CRASH DETECTED",
+                            body = "From: +1-555-CRASH — crash_id: TEST, rideguard_id: DEMO, longitude: -7.7676, latitude: 110.3698. Emergency response required!",
+                            isCrashData = true,
+                            crashId = "TEST",
+                            rideguardId = "DEMO", 
+                            userId = "user123",
+                            latitude = -7.7676,
+                            longitude = 110.3698
+                        )
+                        apiTestResult = "✅ Crash notification sent! Tap it to see the accident dialog with crash location."
+                    } catch (e: Exception) {
+                        apiTestResult = "❌ Notification Error: ${e.message}"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            BodyText(
+                text = "Test crash notification style (persistent, red, non-dismissible).",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()

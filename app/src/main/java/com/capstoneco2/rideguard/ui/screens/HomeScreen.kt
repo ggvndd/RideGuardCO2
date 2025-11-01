@@ -501,7 +501,7 @@ private fun TrafficAccidentCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Traffic Accident\nDetected",
+                text = "Traffic Accident Detected",
                 style = MaterialTheme.typography.headlineSmall.copy(
                     fontWeight = FontWeight.Bold
                 ),

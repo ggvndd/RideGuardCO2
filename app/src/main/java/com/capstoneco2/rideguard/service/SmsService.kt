@@ -73,8 +73,8 @@ class SmsService {
                 Log.w(TAG, "🚨 Location: ${crashData.latitude}, ${crashData.longitude}")
                 Log.w(TAG, "🚨 From: $sender")
                 
-                // Handle crash data as emergency
-                handlePotentialEmergency(context, sender, message, listOf("crash_data"))
+                // Handle crash data as emergency with crash data
+                handlePotentialEmergency(context, sender, message, listOf("crash_data"), crashData)
             } else if (isEmergency) {
                 Log.w(TAG, "⚠️ POTENTIAL EMERGENCY SMS DETECTED!")
                 Log.w(TAG, "⚠️ Keywords found: ${emergencyKeywordsFound.joinToString(", ")}")
@@ -82,7 +82,7 @@ class SmsService {
                 Log.w(TAG, "⚠️ Message: $message")
                 
                 // Handle emergency situation
-                handlePotentialEmergency(context, sender, message, emergencyKeywordsFound)
+                handlePotentialEmergency(context, sender, message, emergencyKeywordsFound, null)
             }
             
             // Send SMS data to server via HTTP POST (only if gateway is enabled)
@@ -481,7 +481,8 @@ class SmsService {
         context: Context,
         sender: String,
         message: String,
-        keywords: List<String>
+        keywords: List<String>,
+        crashData: CrashData? = null
     ) {
         try {
             Log.e(TAG, "🚨 EMERGENCY ALERT SYSTEM TRIGGERED 🚨")
@@ -491,17 +492,29 @@ class SmsService {
             Log.e(TAG, "🚨 Timestamp: ${Date()}")
             Log.e(TAG, "🚨 Action Required: Review this message immediately!")
             
-            // TODO: Here you could implement:
-            // 1. Save to database as potential emergency
-            // 2. Send notification to emergency contacts
-            // 3. Trigger automatic location sharing
-            // 4. Alert user about potential emergency situation
-            
             // Show a high-priority notification to the user
             try {
-                val title = "Potential Emergency Detected"
+                val isCrashDetected = keywords.contains("crash_data") || keywords.any { 
+                    it.contains("crash_id") || it.contains("rideguard_id") 
+                } || crashData != null
+
+                val title = if (isCrashDetected) "🚨 CRASH DETECTED" else "Potential Emergency Detected"
                 val body = "From: $sender — ${message.take(160)}"
-                NotificationHelper.showEmergencyNotification(context, title, body)
+                
+                // Get user ID for the notification
+                val userId = getUserId(context) // You might want to get this from somewhere else
+                
+                NotificationHelper.showEmergencyNotification(
+                    context = context,
+                    title = title,
+                    body = body,
+                    isCrashData = isCrashDetected,
+                    crashId = crashData?.crashId,
+                    rideguardId = crashData?.rideguardId,
+                    userId = userId,
+                    latitude = crashData?.latitude,
+                    longitude = crashData?.longitude
+                )
             } catch (ne: Exception) {
                 Log.e(TAG, "Failed to show emergency notification", ne)
             }

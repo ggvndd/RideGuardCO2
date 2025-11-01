@@ -1,8 +1,6 @@
 package com.capstoneco2.rideguard.ui.components
 
 import android.content.Intent
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.EaseInBack
 import androidx.compose.animation.core.EaseOutBack
@@ -32,10 +30,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,12 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.core.net.toUri
 
-// Enum for accident dialog states
 enum class AccidentDialogState {
     ACCIDENT_DETECTED,
     LOCATION_VIEW,
@@ -58,59 +52,64 @@ enum class AccidentDialogState {
 @Composable
 fun TrafficAccidentDialog(
     isVisible: Boolean,
-    onDismiss: () -> Unit,
-    onCheckLocation: () -> Unit = {},
-    onCallEmergencyServices: () -> Unit = {},
     onClose: () -> Unit,
-    latitude: Double = -7.7956, // Default to Yogyakarta coordinates for testing
+    latitude: Double = -7.7956,
     longitude: Double = 110.3695
 ) {
-    var dialogState by remember { mutableStateOf(AccidentDialogState.ACCIDENT_DETECTED) }
-    
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(animationSpec = tween(300)) + scaleIn(
-            animationSpec = tween(300, easing = EaseOutBack)
-        ),
-        exit = fadeOut(animationSpec = tween(200)) + scaleOut(
-            animationSpec = tween(200, easing = EaseInBack)
-        )
-    ) {
+    val dialogState = remember { mutableStateOf(AccidentDialogState.ACCIDENT_DETECTED) }
+
+    if (isVisible) {
         Dialog(
-            onDismissRequest = onDismiss,
-            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
+            onDismissRequest = onClose,
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = true,
+                dismissOnClickOutside = false
+            )
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = fadeIn(animationSpec = tween(300)) +
+                        scaleIn(
+                            initialScale = 0.8f,
+                            animationSpec = tween(300, easing = EaseOutBack)
+                        ),
+                exit = fadeOut(animationSpec = tween(200)) +
+                        scaleOut(
+                            targetScale = 0.8f,
+                            animationSpec = tween(200, easing = EaseInBack)
+                        )
             ) {
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .clickable(enabled = false) { },
+                        .fillMaxWidth(0.9f)
+                        .padding(16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = Color.White
                     ),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 16.dp
+                    )
                 ) {
-                    when (dialogState) {
+                    when (dialogState.value) {
                         AccidentDialogState.ACCIDENT_DETECTED -> {
                             AccidentDetectedContent(
-                                onCheckLocation = {
-                                    onCheckLocation()
-                                    dialogState = AccidentDialogState.LOCATION_VIEW
+                                onCheckLocation = { 
+                                    dialogState.value = AccidentDialogState.LOCATION_VIEW 
                                 },
-                                onCallEmergency = {
-                                    onCallEmergencyServices()
-                                    dialogState = AccidentDialogState.EMERGENCY_SERVICES
+                                onCallEmergency = { 
+                                    dialogState.value = AccidentDialogState.EMERGENCY_SERVICES 
                                 },
-                                onClose = onClose
+                                onClose = onClose,
+                                latitude = latitude,
+                                longitude = longitude
                             )
                         }
                         AccidentDialogState.LOCATION_VIEW -> {
                             LocationViewContent(
+                                onBack = { 
+                                    dialogState.value = AccidentDialogState.ACCIDENT_DETECTED 
+                                },
                                 onClose = onClose,
                                 latitude = latitude,
                                 longitude = longitude
@@ -119,7 +118,7 @@ fun TrafficAccidentDialog(
                         AccidentDialogState.EMERGENCY_SERVICES -> {
                             EmergencyServicesContent(
                                 onCheckLocation = { 
-                                    dialogState = AccidentDialogState.LOCATION_VIEW 
+                                    dialogState.value = AccidentDialogState.LOCATION_VIEW 
                                 },
                                 onClose = onClose
                             )
@@ -135,14 +134,17 @@ fun TrafficAccidentDialog(
 private fun AccidentDetectedContent(
     onCheckLocation: () -> Unit,
     onCallEmergency: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    latitude: Double = -7.7956,
+    longitude: Double = 110.3695
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier.padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Traffic Accident\nDetected!",
+            text = "Traffic Accident Detected!",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
@@ -199,8 +201,9 @@ private fun AccidentDetectedContent(
             ) {
                 Text(
                     text = "Check Location",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
             
@@ -209,9 +212,9 @@ private fun AccidentDetectedContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.error,
-                        shape = RoundedCornerShape(12.dp)
+                        2.dp,
+                        MaterialTheme.colorScheme.error,
+                        RoundedCornerShape(12.dp)
                     )
                     .clickable { onCallEmergency() }
                     .padding(vertical = 16.dp),
@@ -219,27 +222,25 @@ private fun AccidentDetectedContent(
             ) {
                 Text(
                     text = "Call Emergency Services",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
             
-            // Close Button - Filled
+            // Close Button - Text only
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.error,
-                        RoundedCornerShape(12.dp)
-                    )
                     .clickable { onClose() }
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Close",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
@@ -248,18 +249,19 @@ private fun AccidentDetectedContent(
 
 @Composable
 private fun LocationViewContent(
+    onBack: () -> Unit,
     onClose: () -> Unit,
-    latitude: Double,
-    longitude: Double
+    latitude: Double = -7.7956,
+    longitude: Double = 110.3695
 ) {
     val context = LocalContext.current
-    
+
     Column(
         modifier = Modifier.padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Accident\nLocation",
+            text = "Accident Location",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
@@ -267,44 +269,62 @@ private fun LocationViewContent(
             textAlign = TextAlign.Center
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
-        // Location coordinates display
-        Text(
-            text = "Coordinates: $latitude, $longitude",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Black.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Embedded Google Maps using WebView
-        Box(
+        // Native Compose Location Preview Card
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp)
-                .background(
-                    Color.Gray.copy(alpha = 0.1f),
-                    RoundedCornerShape(12.dp)
-                )
+                .height(220.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            AndroidView(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(4.dp),
-                factory = { context ->
-                    WebView(context).apply {
-                        webViewClient = WebViewClient()
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        
-                        // For now, load a simple map view (you'll need to add your Google Maps API key)
-                        val simpleMapUrl = "https://maps.google.com/maps?q=$latitude,$longitude&t=&z=15&ie=UTF8&iwloc=&output=embed"
-                        loadUrl(simpleMapUrl)
-                    }
-                }
-            )
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Location marker icon
+                Text(
+                    text = "📍",
+                    fontSize = 48.sp
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Crash Location",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Lat: ${String.format("%.6f", latitude)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Text(
+                    text = "Lng: ${String.format("%.6f", longitude)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "Tap 'Open in Google Maps' for navigation",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
@@ -314,36 +334,25 @@ private fun LocationViewContent(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Open in Google Maps App Button - Filled
+            // Open in Google Maps Button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        MaterialTheme.colorScheme.error,
+                        MaterialTheme.colorScheme.primary,
                         RoundedCornerShape(12.dp)
                     )
                     .clickable { 
-                        // Open Google Maps app with the coordinates
-                        try {
-                            val gmmIntentUri =
-                                "geo:$latitude,$longitude?q=$latitude,$longitude(Accident Location)".toUri()
-                            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                            mapIntent.setPackage("com.google.android.apps.maps")
-                            
-                            // If Google Maps app is not available, open in browser
-                            if (mapIntent.resolveActivity(context.packageManager) != null) {
-                                context.startActivity(mapIntent)
-                            } else {
-                                // Fallback to browser
-                                val browserIntent = Intent(
-                                    Intent.ACTION_VIEW,
-                                    "https://maps.google.com/?q=$latitude,$longitude".toUri()
-                                )
-                                context.startActivity(browserIntent)
-                            }
-                        } catch (e: Exception) {
-                            // Handle error - could show a toast or log
-                            e.printStackTrace()
+                        val gmmIntentUri = android.net.Uri.parse("geo:$latitude,$longitude?q=$latitude,$longitude(Accident+Location)")
+                        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                        mapIntent.setPackage("com.google.android.apps.maps")
+                        if (mapIntent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(mapIntent)
+                        } else {
+                            // Fallback to web maps
+                            val webIntent = Intent(Intent.ACTION_VIEW, 
+                                android.net.Uri.parse("https://maps.google.com/?q=$latitude,$longitude"))
+                            context.startActivity(webIntent)
                         }
                     }
                     .padding(vertical = 16.dp),
@@ -351,47 +360,30 @@ private fun LocationViewContent(
             ) {
                 Text(
                     text = "Open in Google Maps",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
             
-            // Call Emergency Services Button - Outlined
+            // Back Button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.error,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable { /* Call emergency */ }
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Call Emergency Services",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            
-            // Close Button - Filled
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.error,
+                        2.dp,
+                        MaterialTheme.colorScheme.primary,
                         RoundedCornerShape(12.dp)
                     )
-                    .clickable { onClose() }
+                    .clickable { onBack() }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Close",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White
+                    text = "Back",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
@@ -403,18 +395,61 @@ private fun EmergencyServicesContent(
     onCheckLocation: () -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier.padding(28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Emergency Service\nRedirected to Phone",
+            text = "Emergency Services",
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
             ),
             textAlign = TextAlign.Center
         )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "🚨",
+            fontSize = 80.sp
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "In case of emergency, please contact:",
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center,
+            color = Color.Black
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "🚔 Police: 110",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            Text(
+                text = "🚑 Ambulance: 118/119",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            Text(
+                text = "🚒 Fire Department: 113",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+        }
         
         Spacer(modifier = Modifier.height(32.dp))
         
@@ -423,11 +458,37 @@ private fun EmergencyServicesContent(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Check Location Button - Filled
+            // Call Police Button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
+                        MaterialTheme.colorScheme.error,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_CALL).apply {
+                            data = android.net.Uri.parse("tel:110")
+                        }
+                        context.startActivity(intent)
+                    }
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Call Police (110)",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            
+            // Check Location Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        2.dp,
                         MaterialTheme.colorScheme.error,
                         RoundedCornerShape(12.dp)
                     )
@@ -437,28 +498,25 @@ private fun EmergencyServicesContent(
             ) {
                 Text(
                     text = "Check Location",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
             
-            // Close Button - Outlined
+            // Close Button
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.error,
-                        shape = RoundedCornerShape(12.dp)
-                    )
                     .clickable { onClose() }
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "Close",
-                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.error
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }

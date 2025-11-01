@@ -30,6 +30,7 @@ import com.capstoneco2.rideguard.service.FCMTokenService
 import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -91,6 +92,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MyApp(
+                        intent = intent,
                         onAuthSuccess = {
                             savePendingFCMToken()
                             performPeriodicFCMTokenCleanup()
@@ -354,6 +356,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MyApp(
+    intent: Intent? = null,
     onAuthSuccess: () -> Unit = {}
 ) {
     val authViewModel: AuthViewModel = viewModel()
@@ -443,6 +446,7 @@ fun MyApp(
             AppScreen.MAIN_APP -> {
                 MainApp(
                     username = authState.userProfile?.username ?: "User",
+                    intent = intent,
                     onLogout = {
                         // Navigate back to welcome screen after logout
                         currentScreen = AppScreen.WELCOME
