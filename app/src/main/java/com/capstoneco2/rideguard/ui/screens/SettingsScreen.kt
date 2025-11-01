@@ -55,6 +55,7 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.network.NetworkRepository
 import com.capstoneco2.rideguard.service.SmsService
+import com.capstoneco2.rideguard.notification.NotificationHelper
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
@@ -292,6 +293,33 @@ fun SettingsScreen(
             
             BodyText(
                 text = "Test POST request to API endpoint with JSON data.",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Test Emergency Notification Button
+            SecondaryButton(
+                text = "Test Emergency Notification",
+                onClick = {
+                    try {
+                        NotificationHelper.showEmergencyNotification(
+                            context = context,
+                            title = "Emergency Detection Test",
+                            body = "From: +1-555-CRASH — crash_id: TEST, rideguard_id: DEMO, Emergency keywords detected in SMS message. Tap to view details."
+                        )
+                        apiTestResult = "✅ Emergency notification sent! Check your notification panel."
+                    } catch (e: Exception) {
+                        apiTestResult = "❌ Notification Error: ${e.message}"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            
+            BodyText(
+                text = "Test the emergency notification style and behavior.",
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()

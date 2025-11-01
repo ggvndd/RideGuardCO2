@@ -2,6 +2,7 @@ package com.capstoneco2.rideguard.service
 
 import android.content.Context
 import android.util.Log
+import com.capstoneco2.rideguard.notification.NotificationHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -496,13 +497,14 @@ class SmsService {
             // 3. Trigger automatic location sharing
             // 4. Alert user about potential emergency situation
             
-            // For now, just extensive logging for debugging
-            println("=== EMERGENCY DETECTION SYSTEM ===")
-            println("POTENTIAL EMERGENCY SMS DETECTED!")
-            println("From: $sender")
-            println("Keywords: ${keywords.joinToString(", ")}")
-            println("Message: $message")
-            println("===================================")
+            // Show a high-priority notification to the user
+            try {
+                val title = "Potential Emergency Detected"
+                val body = "From: $sender — ${message.take(160)}"
+                NotificationHelper.showEmergencyNotification(context, title, body)
+            } catch (ne: Exception) {
+                Log.e(TAG, "Failed to show emergency notification", ne)
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error handling potential emergency", e)
