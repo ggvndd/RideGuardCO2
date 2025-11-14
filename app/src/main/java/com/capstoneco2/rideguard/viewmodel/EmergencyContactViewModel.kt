@@ -126,6 +126,32 @@ class EmergencyContactViewModel : ViewModel() {
     
     
     /**
+     * Delete an emergency contact
+     */
+    fun deleteEmergencyContact(currentUserUid: String, contactUid: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, error = null)
+            
+            val result = emergencyContactService.removeEmergencyContact(currentUserUid, contactUid)
+            if (result.isSuccess) {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    successMessage = "Emergency contact removed successfully"
+                )
+                
+                // Reload contacts to show the updated list
+                delay(500)
+                loadEmergencyContactsAfterAdd(currentUserUid)
+            } else {
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = result.exceptionOrNull()?.message ?: "Failed to remove emergency contact"
+                )
+            }
+        }
+    }
+    
+    /**
      * Clear messages
      */
     fun clearMessages() {
