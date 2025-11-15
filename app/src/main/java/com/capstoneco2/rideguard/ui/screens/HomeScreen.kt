@@ -43,6 +43,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.ui.theme.Blue80
 import com.capstoneco2.rideguard.ui.theme.Black80
@@ -51,6 +62,68 @@ import com.capstoneco2.rideguard.data.EmergencyContactInfo
 import com.capstoneco2.rideguard.ui.components.AddEmergencyContactDialog
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
+
+// Wi-Fi connectivity data classes (from BlackboxScreen)
+data class WiFiDeviceInfo(
+    val ssid: String,
+    val isConnected: Boolean = false,
+    val signalStrength: Int = 0
+)
+
+// Real Wi-Fi utility function for device detection
+private fun getCurrentWiFiDeviceInfo(context: Context): WiFiDeviceInfo? {
+    try {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        
+        if (!wifiManager.isWifiEnabled) return null
+        
+        val activeNetwork = connectivityManager.activeNetwork
+        val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+        
+        if (networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true) {
+            val wifiInfo = wifiManager.connectionInfo
+            
+            // Handle different cases for SSID
+            val ssid = when {
+                wifiInfo.ssid == null -> null
+                wifiInfo.ssid == "<unknown ssid>" -> null
+                wifiInfo.ssid.startsWith("\"") && wifiInfo.ssid.endsWith("\"") -> {
+                    wifiInfo.ssid.substring(1, wifiInfo.ssid.length - 1)
+                }
+                else -> wifiInfo.ssid
+            } ?: return null
+            
+            // Skip if SSID is still unknown
+            if (ssid == "<unknown ssid>" || ssid.isEmpty()) return null
+            
+            val signalLevel = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                wifiInfo.rssi.let { rssi ->
+                    when {
+                        rssi >= -50 -> 4
+                        rssi >= -60 -> 3
+                        rssi >= -70 -> 2
+                        rssi >= -80 -> 1
+                        else -> 0
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                WifiManager.calculateSignalLevel(wifiInfo.rssi, 5)
+            }
+            
+            return WiFiDeviceInfo(
+                ssid = ssid,
+                isConnected = true,
+                signalStrength = signalLevel
+            )
+        }
+    } catch (e: Exception) {
+        Log.e("WiFiUtils", "Error getting current WiFi info", e)
+    }
+    
+    return null
+}
 
 @Composable
 fun HomeScreen(
@@ -62,14 +135,63 @@ fun HomeScreen(
     emergencyContactViewModel: EmergencyContactViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    var isBlackboxOnline by remember { mutableStateOf(true) }
+    var isBlackboxOnline by remember { mutableStateOf(false) }
     var batteryLevel by remember { mutableStateOf("100%") }
-    var blackboxSerialNumber by remember { mutableStateOf("Lorem Ipsum") }
+    var blackboxSerialNumber by remember { mutableStateOf("No Device Connected") }
+    var connectedDeviceName by remember { mutableStateOf("No Device Connected") }
     var showAddContactDialog by remember { mutableStateOf(false) }
+    var hasLocationPermission by remember { mutableStateOf(false) }
+    var hasWifiPermissions by remember { mutableStateOf(false) }
     
     val authState by authViewModel.authState.collectAsState()
     val emergencyContactState by emergencyContactViewModel.state.collectAsState()
     val currentUserUid = authState.user?.uid ?: ""
+    
+    // Permission launcher for Wi-Fi access
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false ||
+                              permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        hasWifiPermissions = permissions[Manifest.permission.ACCESS_WIFI_STATE] ?: false &&
+                           permissions[Manifest.permission.CHANGE_WIFI_STATE] ?: false
+    }
+    
+    // Check permissions and get current Wi-Fi connection status
+    LaunchedEffect(Unit) {
+        // Check permissions
+        hasLocationPermission = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        hasWifiPermissions = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_WIFI_STATE
+        ) == PackageManager.PERMISSION_GRANTED &&
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.CHANGE_WIFI_STATE
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        // Get current Wi-Fi device info if permissions are granted
+        if (hasLocationPermission && hasWifiPermissions) {
+            getCurrentWiFiDeviceInfo(context)?.let { deviceInfo ->
+                // Any connected Wi-Fi network is treated as RideGuard device
+                connectedDeviceName = deviceInfo.ssid
+                blackboxSerialNumber = deviceInfo.ssid
+                isBlackboxOnline = true
+                Log.d("HomeScreen", "RideGuard device detected: ${deviceInfo.ssid}")
+            } ?: run {
+                connectedDeviceName = "No Device Connected"
+                blackboxSerialNumber = "No Device Connected"
+                isBlackboxOnline = false
+                Log.d("HomeScreen", "No RideGuard device connected")
+            }
+        } else {
+            Log.w("HomeScreen", "Wi-Fi permissions not granted, cannot detect device")
+        }
+    }
     
     // Load emergency contacts when screen loads
     LaunchedEffect(currentUserUid) {
@@ -128,16 +250,25 @@ fun HomeScreen(
             ) {
                 StatusCard(
                     modifier = Modifier.weight(1f),
-                    title = "Blackbox Status:",
-                    value = if (isBlackboxOnline) "Online" else "Offline",
+                    title = "RideGuard Status:",
+                    value = if (isBlackboxOnline) "Connected" else "Not Connected",
                     valueColor = if (isBlackboxOnline) Color(0xFF06A759) else Color(0xFFFF6B6B),
-                    onClick = { isBlackboxOnline = !isBlackboxOnline }
+                    onClick = {
+                        if (!hasLocationPermission || !hasWifiPermissions) {
+                            permissionLauncher.launch(arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.ACCESS_WIFI_STATE,
+                                Manifest.permission.CHANGE_WIFI_STATE
+                            ))
+                        }
+                    }
                 )
                 StatusCard(
                     modifier = Modifier.weight(1f),
                     title = "Battery:",
-                    value = batteryLevel,
-                    valueColor = Color(0xFF06A759),
+                    value = if (isBlackboxOnline) batteryLevel else "--",
+                    valueColor = if (isBlackboxOnline) Color(0xFF06A759) else Color(0xFFBBBBBB),
                     onClick = { /* Handle battery click */ }
                 )
             }
@@ -146,8 +277,18 @@ fun HomeScreen(
         item {
             // Blackbox Connected Card with Image Background
             BlackboxConnectedCard(
-                blackboxName = blackboxSerialNumber,
-                isOnline = isBlackboxOnline
+                blackboxName = connectedDeviceName,
+                isOnline = isBlackboxOnline,
+                onClick = {
+                    if (!hasLocationPermission || !hasWifiPermissions) {
+                        permissionLauncher.launch(arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.ACCESS_WIFI_STATE,
+                            Manifest.permission.CHANGE_WIFI_STATE
+                        ))
+                    }
+                }
             )
         }
         
@@ -239,7 +380,8 @@ private fun StatusCard(
 @Composable
 private fun BlackboxConnectedCard(
     blackboxName: String,
-    isOnline: Boolean
+    isOnline: Boolean,
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -249,7 +391,8 @@ private fun BlackboxConnectedCard(
                 width = 2.dp,
                 color = if (isOnline) Blue80 else Color(0xFFFF6B6B),
                 shape = RoundedCornerShape(16.dp)
-            ),
+            )
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = if (isOnline) Color.Transparent else MaterialTheme.colorScheme.surface
         ),
@@ -298,7 +441,7 @@ private fun BlackboxConnectedCard(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (isOnline) "Blackbox Serial Number" else "Device Offline",
+                        text = if (isOnline) "RideGuard Device Connected" else "No RideGuard Device",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White,
                         textAlign = TextAlign.Center
@@ -309,12 +452,23 @@ private fun BlackboxConnectedCard(
                 
                 // Main Text - Centered
                 Text(
-                    text = if (isOnline) blackboxName else "Not Connected",
+                    text = if (isOnline) blackboxName else "Tap to Connect",
                     style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                     color = if (isOnline) Color.White else MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
+                
+                if (!isOnline) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Grant permissions to detect your RideGuard device",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
