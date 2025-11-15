@@ -528,11 +528,39 @@ private fun EmergencyServicesContent(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Call Police Button
+            // Call Ambulance Button (Primary for medical emergencies)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
+                        MaterialTheme.colorScheme.error,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                            data = android.net.Uri.parse("tel:119")
+                        }
+                        context.startActivity(intent)
+                        onEmergencyServicesCalled()
+                    }
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Call Ambulance (119)",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            }
+            
+            // Call Police Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        2.dp,
                         MaterialTheme.colorScheme.error,
                         RoundedCornerShape(12.dp)
                     )
@@ -548,7 +576,35 @@ private fun EmergencyServicesContent(
             ) {
                 Text(
                     text = "Call Police (110)",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            }
+            
+            // Call Fire Department Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        2.dp,
+                        MaterialTheme.colorScheme.error,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                            data = android.net.Uri.parse("tel:113")
+                        }
+                        context.startActivity(intent)
+                        onEmergencyServicesCalled()
+                    }
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Call Fire Dept (113)",
+                    color = MaterialTheme.colorScheme.error,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center
