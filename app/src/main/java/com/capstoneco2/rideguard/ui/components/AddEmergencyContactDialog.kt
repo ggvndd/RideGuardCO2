@@ -68,30 +68,47 @@ fun AddEmergencyContactDialog(
         }
     }
 
-    AlertDialog(
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Add Emergency Contact",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
-                }
-            }
-        },
-        text = {
+        properties = androidx.compose.ui.window.DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = androidx.compose.ui.graphics.Color.White
+            ),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(400.dp)
+                    .padding(24.dp)
             ) {
+                // Header - Centered
+                Text(
+                    text = "Add Emergency Contact",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(350.dp)
+                ) {
                 // Search Field
                 OutlinedTextField(
                     value = searchQuery,
@@ -105,10 +122,29 @@ fun AddEmergencyContactDialog(
                     },
                     label = { Text("Search by username") },
                     leadingIcon = { 
-                        Icon(Icons.Default.Search, contentDescription = "Search") 
+                        Icon(
+                            Icons.Default.Search, 
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.primary
+                        ) 
                     },
+                    trailingIcon = if (searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(onClick = { 
+                                searchQuery = ""
+                                viewModel.clearSearchResults()
+                            }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -147,8 +183,9 @@ fun AddEmergencyContactDialog(
                 if (state.searchResults.isNotEmpty()) {
                     Text(
                         text = "Search Results:",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Normal
+                        )
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     
@@ -178,11 +215,30 @@ fun AddEmergencyContactDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                }
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Close Button at bottom
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Close",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             }
-        },
-        confirmButton = { },
-        dismissButton = { }
-    )
+        }
+    }
 }
 
 @Composable
@@ -216,8 +272,9 @@ fun UserSearchResultItem(
                 Column {
                     Text(
                         text = user.username,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Normal
+                        )
                     )
                     Text(
                         text = user.email,

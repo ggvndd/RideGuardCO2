@@ -472,15 +472,12 @@ fun BlackboxPairingDialog(
                         DeviceFoundContent(
                             network = selectedNetwork!!,
                             onConfirm = { 
-                                coroutineScope.launch {
-                                    connectToRealWiFi(context, selectedNetwork!!, onWifiStateChange) { success ->
-                                        if (success) {
-                                            dialogState = BlackboxPairingState.PAIRING_SUCCESS
-                                        } else {
-                                            dialogState = BlackboxPairingState.DEVICE_NOT_FOUND
-                                        }
-                                    }
-                                }
+                                // Simulate immediate connection success without actual Android Wi-Fi connection
+                                onWifiStateChange(WiFiConnectionState(
+                                    connectedNetwork = selectedNetwork!!.copy(isConnected = true),
+                                    connectionStatus = WiFiConnectionStatus.CONNECTED
+                                ))
+                                dialogState = BlackboxPairingState.PAIRING_SUCCESS
                             }
                         )
                     }
@@ -848,7 +845,7 @@ private fun PairingInputContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Scan for available Wi-Fi networks\nto connect as your RideGuard device",
+            text = "Scan for available Wi-Fi networks\nto register as your RideGuard device",
             style = MaterialTheme.typography.bodyLarge,
             color = Color.Black.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
@@ -866,7 +863,7 @@ private fun PairingInputContent(
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .padding(16.dp)
+                    .padding(12.dp)
             ) {
                 Column {
                     Text(
@@ -895,7 +892,7 @@ private fun PairingInputContent(
                 .padding(12.dp)
         ) {
             Text(
-                text = "Select any Wi-Fi network to connect as your RideGuard device",
+                text = "Select any Wi-Fi network to register as your RideGuard device",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
@@ -1055,7 +1052,7 @@ private fun WiFiScanningContent(
                 }
             } else {
                 Text(
-                    text = "Found ${wifiState.availableNetworks.size} network(s). Select any network to use as your RideGuard device.",
+                    text = "Found ${wifiState.availableNetworks.size} network(s). Select any network to register as your RideGuard device.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Black.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
@@ -1167,7 +1164,7 @@ private fun DeviceFoundContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Connect to the selected\nRideGuard device?",
+            text = "Register the selected\nnetwork as your RideGuard device?",
             style = MaterialTheme.typography.bodyLarge,
             color = Color.Black.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
@@ -1187,20 +1184,23 @@ private fun DeviceFoundContent(
                 .padding(16.dp)
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = network.ssid,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (network.isSecure) "Secured Network" else "Open Network",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Black.copy(alpha = 0.7f),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
@@ -1228,7 +1228,7 @@ private fun DeviceFoundContent(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "Make sure you connected to the same network as the RideGuard Device",
+            text = "This network will be registered as your RideGuard device",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Black.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
@@ -1435,7 +1435,7 @@ private fun PairingSuccessContent(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Congratulations! You are now registered as the owner of this RideGuard device.",
+                    text = "Success! This network has been registered as your RideGuard device.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.Black,
                     textAlign = TextAlign.Center

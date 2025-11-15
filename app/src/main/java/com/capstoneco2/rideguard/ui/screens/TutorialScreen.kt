@@ -251,7 +251,7 @@ fun TutorialDetailDialog(
                 .fillMaxWidth()
                 .padding(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = androidx.compose.ui.graphics.Color.White
             ),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -259,8 +259,8 @@ fun TutorialDetailDialog(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Header
                 item {
@@ -324,7 +324,7 @@ fun TutorialStepCard(step: TutorialStep) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
             // Step number and title
             Row(
@@ -383,7 +383,7 @@ fun TutorialStepCard(step: TutorialStep) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(8.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Icon(

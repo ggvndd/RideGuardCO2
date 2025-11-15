@@ -549,10 +549,17 @@ private fun HomeEmergencyContactsSection(
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Add Another",
+                text = if (emergencyContacts.size >= 5) "Limit Reached" else "Add Another",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { onAddAnotherClick() }
+                color = if (emergencyContacts.size >= 5) 
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) 
+                else 
+                    MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(enabled = emergencyContacts.size < 5) { 
+                    if (emergencyContacts.size < 5) {
+                        onAddAnotherClick() 
+                    }
+                }
             )
         }
         
