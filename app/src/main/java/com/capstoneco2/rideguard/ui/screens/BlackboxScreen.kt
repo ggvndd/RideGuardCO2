@@ -83,8 +83,16 @@ import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.Socket
+import java.io.BufferedReader
+
 
 // Data classes for Wi-Fi management
 data class WiFiNetwork(
@@ -295,7 +303,7 @@ fun BlackboxScreen(
                 EmergencyContactsSection(
                     emergencyContacts = emergencyContactState.contacts,
                     isLoading = emergencyContactState.isLoading,
-                    onAddMoreUsers = { 
+                    onAddMoreUsers = {
                         if (emergencyContactState.contacts.size < 5) {
                             showAddContactDialog = true
                         }
@@ -305,15 +313,6 @@ fun BlackboxScreen(
                         showDeleteConfirmDialog = true
                     },
                     isDeviceConnected = isDeviceOnline
-                )
-            }
-            
-            item {
-                // Refresh Data Button
-                SecondaryButton(
-                    text = "Refresh Data",
-                    onClick = { /* No logic needed for now */ },
-                    modifier = Modifier.fillMaxWidth()
                 )
             }
             
@@ -1320,16 +1319,15 @@ private fun DeviceNotFoundContent(
             
             Spacer(modifier = Modifier.height(12.dp))
         }
-        
+
         Text(
-            text = "Connection timeout - Device may be offline",
+//            text = "Connection timeout - Device may be offline",
             // Comment out device type checking - any network can be a RideGuard device
-            // text = if (selectedNetwork?.ssid?.let { ssid ->
-            //            !ssid.contains("RideGuard", ignoreCase = true) &&
-            //            !ssid.contains("ra sah jaluk", ignoreCase = true)
-            //        } == true) 
-            //        "Selected network is not a RideGuard device" 
-            //        else "Connection timeout - Device may be offline",
+             text = if (selectedNetwork?.ssid?.let { ssid ->
+                        !ssid.contains("STM", ignoreCase = true)
+                    } == true)
+                    "Selected network is not a RideGuard device"
+                    else "Connection timeout - Device may be offline",
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center
@@ -1708,7 +1706,10 @@ fun EmergencyContactsSection(
     var isSyncing by remember { mutableStateOf(false) }
     var syncResult by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    
+    var batteryResult by remember { mutableStateOf<String?>(null) }
+    var isGettingBattery by remember { mutableStateOf(false) }
+
+
     LaunchedEffect(Unit) {
         delay(200) // Small delay for staggered appearance
         isVisible = true
@@ -1794,28 +1795,61 @@ fun EmergencyContactsSection(
         Spacer(modifier = Modifier.height(12.dp))
         
         // Sync Contact Data Button
-        SecondaryButton(
-            text = if (isSyncing) "Syncing..." else "Sync Contact Data",
-            onClick = {
-                if (!isSyncing && isDeviceConnected) {
-                    isSyncing = true
-                    syncResult = null
-                    // Simulate sync operation
-                    coroutineScope.launch {
-                        delay(2000) // Simulate network delay
-                        // Random success/failure for demo
-                        syncResult = if (kotlin.random.Random.nextBoolean()) {
-                            "Refresh Success"
-                        } else {
-                            "Sync failed - Connection timeout"
+            SecondaryButton(
+                text = if (isSyncing) "Sending..." else "Send Dummy Data",
+                onClick = {
+                    if (!isSyncing && isDeviceConnected) {
+                        isSyncing = true
+                        syncResult = null
+
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                // IP dan Port ESP01
+                                val espIp = "192.168.51.1"
+                                val espPort = 8080
+
+                                // === AMBIL SEMUA NOMOR DARI emergencyContacts ===
+                                val numberList = emergencyContacts.map { it.phoneNumber }
+
+                                // Buat JSON string
+                                val jsonToSend = """
+                        {
+                            "number": ${numberList.joinToString(
+                                    prefix = "[\"",
+                                    postfix = "\"]",
+                                    separator = "\",\""
+                                )} 
+                        } FIN
+                    """.trimIndent()
+
+                                // Koneksi TCP
+                                val socket = Socket(espIp, espPort)
+                                val out = PrintWriter(socket.getOutputStream(), true)
+
+                                // Kirim JSON
+                                out.println(jsonToSend)
+
+                                socket.close()
+
+                                withContext(Dispatchers.Main) {
+                                    syncResult = "Send Success"
+                                    isSyncing = false
+                                }
+
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    syncResult = "Failed: ${e.message}"
+                                    isSyncing = false
+                                }
+                            }
                         }
-                        isSyncing = false
                     }
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isDeviceConnected && !isSyncing
-        )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isDeviceConnected && !isSyncing
+            )
+
+
         
         // Sync result message
         syncResult?.let { result ->
@@ -1831,6 +1865,69 @@ fun EmergencyContactsSection(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+
+            SecondaryButton(
+                text = if (isGettingBattery) "Getting..." else "Get Battery",
+                onClick = {
+                    if (!isGettingBattery && isDeviceConnected) {
+                        isGettingBattery = true
+                        batteryResult = null
+
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                val espIp = "192.168.51.1"
+                                val espPort = 8080
+
+                                // === KONEKSI TCP ===
+                                val socket = Socket(espIp, espPort)
+
+                                val out = PrintWriter(socket.getOutputStream(), true)
+                                val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+
+                                // === KIRIM PERINTAH GET ===
+                                out.println("GET FIN")
+
+                                // === TERIMA DATA ===
+                                val response = input.readLine()  // contoh: { "battery": 87 }
+
+                                socket.close()
+
+                                // === PARSE JSON ===
+                                val batteryValue = try {
+                                    val json = JSONObject(response)
+                                    json.getInt("battery")
+                                } catch (ex: Exception) {
+                                    null
+                                }
+
+                                withContext(Dispatchers.Main) {
+                                    batteryResult = batteryValue?.let { "Battery: $it%" }
+                                        ?: "Invalid response: $response"
+
+                                    isGettingBattery = false
+                                }
+
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    batteryResult = "Failed: ${e.message}"
+                                    isGettingBattery = false
+                                }
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isDeviceConnected && !isGettingBattery
+            )
+
+            batteryResult?.let {
+                Text(
+                    text = it,
+                    color = Color.White,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
         }
     }
 }

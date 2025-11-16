@@ -64,6 +64,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import com.google.firebase.auth.FirebaseAuth
 import android.content.Intent
+import android.util.Log
 import com.capstoneco2.rideguard.MainActivity
 
 @Composable
@@ -78,7 +79,7 @@ fun SettingsScreen(
     var showDropdown by remember { mutableStateOf(false) }
     var apiTestResult by remember { mutableStateOf<String?>(null) }
     var isApiTesting by remember { mutableStateOf(false) }
-    var phoneNumber by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("123FIN") }
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -278,6 +279,7 @@ fun SettingsScreen(
                 text = if (isApiTesting) "Testing API..." else "Test API Connection",
                 onClick = {
                     if (!isApiTesting) {
+
                         isApiTesting = true
                         apiTestResult = null
                         coroutineScope.launch {
@@ -288,6 +290,7 @@ fun SettingsScreen(
                                 } else {
                                     "❌ API Connection Failed: ${result.exceptionOrNull()?.message}"
                                 }
+                                Log.d("API_TEST", "API Test Result: $apiTestResult")
                             } catch (e: Exception) {
                                 apiTestResult = "❌ Error: ${e.message}"
                             } finally {
