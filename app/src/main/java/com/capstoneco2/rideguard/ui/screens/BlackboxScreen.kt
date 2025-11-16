@@ -161,6 +161,7 @@ fun BlackboxScreen(
     var wifiState by remember { mutableStateOf(WiFiConnectionState()) }
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasWifiPermissions by remember { mutableStateOf(false) }
+    var batteryResult by remember { mutableStateOf<String?>(null) }
     
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -286,7 +287,8 @@ fun BlackboxScreen(
                 // RideGuard Details
                 RideGuardDetailsSection(
                     onPulsaBalanceClick = onNavigateToPulsaBalance,
-                    isDeviceConnected = isDeviceOnline
+                    isDeviceConnected = isDeviceOnline,
+                    batteryResult = batteryResult
                 )
             }
             
@@ -312,7 +314,8 @@ fun BlackboxScreen(
                         contactToDelete = contact
                         showDeleteConfirmDialog = true
                     },
-                    isDeviceConnected = isDeviceOnline
+                    isDeviceConnected = isDeviceOnline,
+                    onBatteryResult = { result -> batteryResult = result }
                 )
             }
             
@@ -1545,7 +1548,8 @@ private fun BlackBoxDeviceCard(
 @Composable
 fun RideGuardDetailsSection(
     onPulsaBalanceClick: () -> Unit = {},
-    isDeviceConnected: Boolean = false
+    isDeviceConnected: Boolean = false,
+    batteryResult: String? = null
 ) {
     Column {
         SectionHeader(
@@ -1587,7 +1591,7 @@ fun RideGuardDetailsSection(
                 modifier = Modifier.weight(1f, false)
             )
             Text(
-                text = if (isDeviceConnected) "100%" else "---",
+                text = batteryResult ?: (if (isDeviceConnected) "100%" else "---"),
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -1744,13 +1748,13 @@ fun EmergencyContactsSection(
     isLoading: Boolean = false,
     onAddMoreUsers: () -> Unit = {},
     onDeleteContact: (EmergencyContactInfo) -> Unit = {},
-    isDeviceConnected: Boolean = false
+    isDeviceConnected: Boolean = false,
+    onBatteryResult: (String?) -> Unit = {}
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
     var syncResult by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    var batteryResult by remember { mutableStateOf<String?>(null) }
     var isGettingBattery by remember { mutableStateOf(false) }
 
 
@@ -1895,27 +1899,14 @@ fun EmergencyContactsSection(
         
         Spacer(modifier = Modifier.height(12.dp))
         
-        // Sync result message
-        syncResult?.let { result ->
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = result,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (result.startsWith("Refresh Success")) 
-                    MaterialTheme.colorScheme.primary 
-                else 
-                    MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+
 
             SecondaryButton(
                 text = if (isGettingBattery) "Getting..." else "Get Data from Device",
                 onClick = {
                     if (!isGettingBattery && isDeviceConnected) {
                         isGettingBattery = true
-                        batteryResult = null
+                        onBatteryResult(null)
 
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
@@ -1939,21 +1930,23 @@ fun EmergencyContactsSection(
                                 // === PARSE JSON ===
                                 val batteryValue = try {
                                     val json = JSONObject(response)
-                                    json.getInt("battery")
+                                    json.getDouble("battery")
                                 } catch (ex: Exception) {
                                     null
                                 }
 
                                 withContext(Dispatchers.Main) {
-                                    batteryResult = batteryValue?.let { "Battery: $it%" }
+                                    val result = batteryValue?.let { "%.1f%%".format(it) }
                                         ?: "Invalid response: $response"
+                                    onBatteryResult(result)
 
                                     isGettingBattery = false
                                 }
 
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
-                                    batteryResult = "Failed: ${e.message}"
+                                    val errorResult = "Failed: ${e.message}"
+                                    onBatteryResult(errorResult)
                                     isGettingBattery = false
                                 }
                             }
@@ -1963,12 +1956,19 @@ fun EmergencyContactsSection(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = isDeviceConnected && !isGettingBattery
             )
-
-            batteryResult?.let {
+            
+            // Sync result message at bottom
+            syncResult?.let { result ->
+                Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = it,
-                    color = Color.White,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = if (result.startsWith("Send Success")) "data synced" else "data cannot sync",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (result.startsWith("Send Success")) 
+                        Color(0xFF4CAF50) // Green color
+                    else 
+                        Color(0xFFF44336), // Red color
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 
