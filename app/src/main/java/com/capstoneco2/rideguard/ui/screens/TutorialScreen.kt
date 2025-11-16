@@ -79,7 +79,6 @@ fun TutorialScreen() {
         items(getTutorialItems()) { tutorial ->
             TutorialItemCard(
                 title = tutorial.title,
-                author = tutorial.author,
                 onClick = { selectedTutorial = tutorial }
             )
         }
@@ -92,7 +91,6 @@ fun TutorialScreen() {
 
 data class TutorialItem(
     val title: String,
-    val author: String,
     val content: List<TutorialStep>
 )
 
@@ -108,7 +106,6 @@ fun getTutorialItems(): List<TutorialItem> {
         // Tutorial 1: Emergency Contacts
         TutorialItem(
             title = "Managing Emergency Contacts",
-            author = "RideGuard Team",
             content = listOf(
                 TutorialStep(
                     stepNumber = 1,
@@ -146,7 +143,6 @@ fun getTutorialItems(): List<TutorialItem> {
         // Tutorial 2: Device Connection
         TutorialItem(
             title = "Connecting to RideGuard Device",
-            author = "RideGuard Team",
             content = listOf(
                 TutorialStep(
                     stepNumber = 1,
@@ -190,7 +186,6 @@ fun getTutorialItems(): List<TutorialItem> {
         // Tutorial 3: Authentication
         TutorialItem(
             title = "Login & Account Registration",
-            author = "RideGuard Team",
             content = listOf(
                 TutorialStep(
                     stepNumber = 1,
@@ -268,17 +263,11 @@ fun TutorialDetailDialog(
                         Text(
                             text = tutorial.title,
                             style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                lineHeight = MaterialTheme.typography.headlineSmall.lineHeight * 1.1f
                             ),
-                            color = com.capstoneco2.rideguard.ui.theme.Blue80
-                        )
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        Text(
-                            text = "By ${tutorial.author}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            color = com.capstoneco2.rideguard.ui.theme.Blue80,
+                            maxLines = 2
                         )
                         
                         Spacer(modifier = Modifier.height(8.dp))
@@ -355,7 +344,8 @@ fun TutorialStepCard(step: TutorialStep) {
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2
                 )
             }
             
@@ -364,7 +354,9 @@ fun TutorialStepCard(step: TutorialStep) {
             // Description
             Text(
                 text = step.description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Normal
+                ),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
             )
             

@@ -1691,6 +1691,50 @@ fun CameraSettingsSection(
                 }
             }
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // SD Card Capacity
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "SD Card Capacity",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            )
+            
+            Text(
+                text = "2.1 GB of 32 GB",
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // SD Card Progress Bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .background(
+                    MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f),
+                    RoundedCornerShape(4.dp)
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.065f) // 2.1/32 ≈ 0.065
+                    .height(8.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(4.dp)
+                    )
+            )
+        }
     }
 }
 
@@ -1796,7 +1840,7 @@ fun EmergencyContactsSection(
         
         // Sync Contact Data Button
             SecondaryButton(
-                text = if (isSyncing) "Sending..." else "Send Dummy Data",
+                text = if (isSyncing) "Syncing..." else "Sync Data to Device",
                 onClick = {
                     if (!isSyncing && isDeviceConnected) {
                         isSyncing = true
@@ -1848,8 +1892,8 @@ fun EmergencyContactsSection(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = isDeviceConnected && !isSyncing
             )
-
-
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         // Sync result message
         syncResult?.let { result ->
@@ -1867,7 +1911,7 @@ fun EmergencyContactsSection(
         }
 
             SecondaryButton(
-                text = if (isGettingBattery) "Getting..." else "Get Battery",
+                text = if (isGettingBattery) "Getting..." else "Get Data from Device",
                 onClick = {
                     if (!isGettingBattery && isDeviceConnected) {
                         isGettingBattery = true

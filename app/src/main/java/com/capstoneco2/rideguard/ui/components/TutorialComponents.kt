@@ -23,7 +23,6 @@ import com.capstoneco2.rideguard.ui.theme.Blue80
 @Composable
 fun TutorialItemCard(
     title: String,
-    author: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -60,13 +59,6 @@ fun TutorialItemCard(
                 SectionHeader(
                     text = title,
                     color = Blue80
-                )
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                BodyText(
-                    text = author,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }
         }
