@@ -1844,7 +1844,7 @@ fun EmergencyContactsSection(
         
         // Sync Contact Data Button
             SecondaryButton(
-                text = if (isSyncing) "Syncing..." else "Sync Data to Device",
+                text = if (isSyncing) "Syncing..." else "Sync Configuration to Device",
                 onClick = {
                     if (!isSyncing && isDeviceConnected) {
                         isSyncing = true
@@ -1902,7 +1902,7 @@ fun EmergencyContactsSection(
 
 
             SecondaryButton(
-                text = if (isGettingBattery) "Getting..." else "Get Data from Device",
+                text = if (isGettingBattery) "Getting..." else "Get Configuration",
                 onClick = {
                     if (!isGettingBattery && isDeviceConnected) {
                         isGettingBattery = true
