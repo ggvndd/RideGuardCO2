@@ -252,6 +252,7 @@ fun SettingsScreen(
             }
         }
         
+        /*
         item {
             // Testing Section
             SectionHeader(text = "Testing")
@@ -561,6 +562,7 @@ fun SettingsScreen(
                 )
             }
         }
+        */
         
 
         

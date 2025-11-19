@@ -95,18 +95,6 @@ fun PulsaBalanceScreen(
             }
             
             item {
-                // Check Pulsa Amount Button
-                PrimaryButton(
-                    text = "Check Pulsa Amount",
-                    onClick = { 
-                        // TODO: Add logic to check pulsa amount
-                        // This could trigger an API call or show current balance
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            
-            item {
                 // Instructions Section
                 HowToFillSection()
             }
