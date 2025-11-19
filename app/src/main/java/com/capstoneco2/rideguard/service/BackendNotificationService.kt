@@ -72,7 +72,7 @@ class BackendNotificationService @Inject constructor(
                     
                     if (success) {
                         successCount++
-                        Log.d(TAG, "Successfully sent notification via backend to token: ${token.take(20)}...")
+
                     } else {
                         errors.add("Failed to send to token: ${token.take(20)}...")
                     }
@@ -109,7 +109,7 @@ class BackendNotificationService @Inject constructor(
                 doc.getString("token")
             }.distinct()
             
-            Log.d(TAG, "Found ${tokens.size} active FCM tokens for user: $userId")
+
             tokens
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching FCM tokens for user $userId: ${e.message}")
@@ -132,11 +132,7 @@ class BackendNotificationService @Inject constructor(
         try {
             // Check if backend URL is configured
             if (BACKEND_BASE_URL == "YOUR_BACKEND_URL_HERE" || BACKEND_BASE_URL.contains("your-backend-domain")) {
-                Log.w(TAG, "Backend URL not configured. Cannot send real push notifications.")
-                Log.i(TAG, "Current BACKEND_BASE_URL: $BACKEND_BASE_URL")
-                Log.i(TAG, "To enable real push notifications via backend:")
-                Log.i(TAG, "1. Update BACKEND_BASE_URL with your deployed backend URL")
-                Log.i(TAG, "2. Ensure your backend /api/notify endpoint is accessible")
+
                 return@withContext false
             }
             
@@ -167,9 +163,7 @@ class BackendNotificationService @Inject constructor(
             val success = response.isSuccessful
             
             if (success) {
-                Log.d(TAG, "Backend notification sent successfully to token: ${token.take(20)}...")
-                val responseBody = response.body?.string()
-                Log.d(TAG, "Backend response: $responseBody")
+                response.body?.string() // Consume response body
             } else {
                 Log.e(TAG, "Backend notification failed. Response: ${response.code} - ${response.body?.string()}")
             }

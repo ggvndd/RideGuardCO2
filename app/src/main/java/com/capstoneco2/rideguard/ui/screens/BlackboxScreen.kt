@@ -93,6 +93,53 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.io.BufferedReader
 
+/**
+ * Verify actual device connection by testing communication
+ * Returns true if device responds, false if not reachable
+ */
+private suspend fun verifyDeviceConnection(): Boolean {
+    return try {
+
+        
+        withContext(Dispatchers.IO) {
+            val socket = Socket()
+            socket.soTimeout = 3000 // 3 second timeout
+            
+            try {
+                // Try to connect to the expected RideGuard device IP
+                socket.connect(java.net.InetSocketAddress("192.168.51.1", 8080), 3000)
+                
+                // Send a simple ping command
+                val output = PrintWriter(socket.getOutputStream(), true)
+                val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                
+                output.println("PING")
+                
+                // Wait for response (with timeout)
+                val response = input.readLine()
+                socket.close()
+                
+                val isValidResponse = response != null && 
+                                    (response.contains("PONG") || 
+                                     response.contains("OK") || 
+                                     response.contains("rideguard", ignoreCase = true) ||
+                                     response.contains("battery", ignoreCase = true))
+                
+
+                isValidResponse
+                
+            } catch (e: Exception) {
+                socket.close()
+
+                false
+            }
+        }
+        
+    } catch (e: Exception) {
+        Log.e("DeviceVerification", "Error verifying device connection", e)
+        false
+    }
+}
 
 // Data classes for Wi-Fi management
 data class WiFiNetwork(
@@ -145,14 +192,14 @@ fun BlackboxScreen(
     
     // Load emergency contacts when screen loads
     LaunchedEffect(authState.user) {
-        Log.d("BlackboxScreen", "LaunchedEffect triggered. User: ${authState.user?.uid}")
         authState.user?.uid?.let { userId ->
-            Log.d("BlackboxScreen", "Loading emergency contacts for user: $userId")
             emergencyContactViewModel.loadEmergencyContacts(userId)
-        } ?: Log.w("BlackboxScreen", "User UID is null, not loading emergency contacts")
+        }
     }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var isDeviceOnline by remember { mutableStateOf(false) }
+    var isVerifyingDevice by remember { mutableStateOf(false) }
     var deletionRate by remember { mutableStateOf("3 Hours") }
     var showPairingDialog by remember { mutableStateOf(false) }
     var deviceName by remember { mutableStateOf("No Device Connected") }
@@ -193,17 +240,37 @@ fun BlackboxScreen(
         // Get current Wi-Fi info if permissions are granted
         if (hasLocationPermission && hasWifiPermissions) {
             getCurrentWiFiInfo(context)?.let { currentNetwork ->
-                // Comment out device type checking - treat any connected network as RideGuard device
-                // if (currentNetwork.ssid.contains("RideGuard", ignoreCase = true) ||
-                //     currentNetwork.ssid.contains("ra sah jaluk", ignoreCase = true)) {
-                    deviceName = currentNetwork.ssid
-                    connectedWifiName = currentNetwork.ssid
-                    isDeviceOnline = true
-                    wifiState = wifiState.copy(
-                        connectedNetwork = currentNetwork,
-                        connectionStatus = WiFiConnectionStatus.CONNECTED
-                    )
-                // }
+                deviceName = currentNetwork.ssid
+                connectedWifiName = currentNetwork.ssid
+                wifiState = wifiState.copy(
+                    connectedNetwork = currentNetwork,
+                    connectionStatus = WiFiConnectionStatus.CONNECTED
+                )
+                
+                // Don't automatically set as online - verify device connection first
+                isVerifyingDevice = true
+                
+                // Verify actual device connection in background
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    try {
+                        val deviceReachable = verifyDeviceConnection()
+                        isDeviceOnline = deviceReachable
+                        
+                        if (deviceReachable) {
+
+                        } else {
+
+                        }
+                    } catch (e: Exception) {
+                        Log.e("BlackboxScreen", "Error verifying device", e)
+                        isDeviceOnline = false
+                    } finally {
+                        isVerifyingDevice = false
+                    }
+                }
+            } ?: run {
+                isDeviceOnline = false
+                deviceName = "No Device Connected"
             }
         }
     }
@@ -250,7 +317,30 @@ fun BlackboxScreen(
                 BlackBoxDeviceCard(
                     deviceName = deviceName,
                     isOnline = isDeviceOnline,
-                    onToggleStatus = { isDeviceOnline = !isDeviceOnline }
+                    isVerifying = isVerifyingDevice,
+                    onToggleStatus = { 
+                        // Manual verification when user clicks
+                        if (!isVerifyingDevice) {
+                            isVerifyingDevice = true
+                            coroutineScope.launch {
+                                try {
+                                    val deviceReachable = verifyDeviceConnection()
+                                    isDeviceOnline = deviceReachable
+                                    
+                                    if (deviceReachable) {
+
+                                    } else {
+
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("BlackboxScreen", "Manual verification error", e)
+                                    isDeviceOnline = false
+                                } finally {
+                                    isVerifyingDevice = false
+                                }
+                            }
+                        }
+                    }
                 )
             }
             
@@ -590,7 +680,7 @@ private fun getCurrentWiFiInfo(context: Context): WiFiNetwork? {
             )
         }
     } catch (e: Exception) {
-        Log.e("WiFiUtils", "Error getting current WiFi info", e)
+        // Error getting WiFi info
     }
     
     return null
@@ -603,7 +693,6 @@ private suspend fun startRealWiFiScan(context: Context, onWifiStateChange: (WiFi
         onWifiStateChange(WiFiConnectionState(isScanning = true))
         
         if (!wifiManager.isWifiEnabled) {
-            Log.w("WiFiScan", "WiFi is not enabled")
             onWifiStateChange(WiFiConnectionState(
                 isScanning = false,
                 availableNetworks = emptyList()
@@ -612,17 +701,13 @@ private suspend fun startRealWiFiScan(context: Context, onWifiStateChange: (WiFi
         }
         
         // Start WiFi scan
-        val scanStarted = wifiManager.startScan()
-        if (!scanStarted) {
-            Log.w("WiFiScan", "Failed to start WiFi scan")
-        }
+        wifiManager.startScan()
         
         // Wait for scan to complete
         delay(3000)
         
         // Get scan results
         val scanResults = wifiManager.scanResults ?: emptyList()
-        Log.d("WiFiScan", "Found ${scanResults.size} networks")
         
         val networks = scanResults
             .filter { !it.SSID.isNullOrEmpty() && it.SSID != "<unknown ssid>" }
@@ -663,14 +748,11 @@ private suspend fun startRealWiFiScan(context: Context, onWifiStateChange: (WiFi
             // }.thenByDescending { it.signalStrength })
             .sortedByDescending { it.signalStrength }
         
-        Log.d("WiFiScan", "Processed networks: ${networks.map { it.ssid }}")
-        
         onWifiStateChange(WiFiConnectionState(
             isScanning = false,
             availableNetworks = networks
         ))
     } catch (e: Exception) {
-        Log.e("WiFiScan", "Error during WiFi scan", e)
         onWifiStateChange(WiFiConnectionState(
             isScanning = false,
             availableNetworks = emptyList()
@@ -702,7 +784,7 @@ private suspend fun connectToRealWiFi(
                         // For secured networks, you'd typically prompt for password
                         // For IoT devices, they might use a default password or be open
                         // This is where you'd set the password if known
-                        Log.d("WiFiConnect", "Network is secured, password may be required")
+
                     }
                 }
                 .build()
@@ -714,7 +796,6 @@ private suspend fun connectToRealWiFi(
             
             val networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(androidNetwork: Network) {
-                    Log.d("WiFiConnect", "Network available: ${androidNetwork}")
                     onWifiStateChange(WiFiConnectionState(
                         connectedNetwork = network.copy(isConnected = true),
                         connectionStatus = WiFiConnectionStatus.CONNECTED
@@ -723,7 +804,6 @@ private suspend fun connectToRealWiFi(
                 }
                 
                 override fun onUnavailable() {
-                    Log.d("WiFiConnect", "Network unavailable")
                     onWifiStateChange(WiFiConnectionState(
                         connectionStatus = WiFiConnectionStatus.FAILED
                     ))
@@ -731,7 +811,6 @@ private suspend fun connectToRealWiFi(
                 }
                 
                 override fun onLost(androidNetwork: Network) {
-                    Log.d("WiFiConnect", "Network lost")
                     onWifiStateChange(WiFiConnectionState(
                         connectionStatus = WiFiConnectionStatus.DISCONNECTED
                     ))
@@ -754,7 +833,6 @@ private suspend fun connectToRealWiFi(
                 } else {
                     // For secured networks, you'd need to handle different security types
                     // This is a simplified approach - in real apps, you'd prompt for password
-                    Log.d("WiFiConnect", "Secured network detected, may need password")
                     allowedKeyManagement.set(WifiConfiguration.KeyMgmt.WPA_PSK)
                     // preSharedKey = "\"your_password_here\""
                 }
@@ -800,7 +878,6 @@ private suspend fun connectToRealWiFi(
             }
         }
     } catch (e: Exception) {
-        Log.e("WiFiConnect", "Error connecting to WiFi", e)
         onWifiStateChange(WiFiConnectionState(
             connectionStatus = WiFiConnectionStatus.FAILED
         ))
@@ -1473,6 +1550,7 @@ private fun PairingSuccessContent(
 private fun BlackBoxDeviceCard(
     deviceName: String,
     isOnline: Boolean,
+    isVerifying: Boolean = false,
     onToggleStatus: () -> Unit
 ) {
     
@@ -1534,10 +1612,36 @@ private fun BlackBoxDeviceCard(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        BodyText(
-                            text = "Status: ${if (isOnline) "Online" else "Not connected"}",
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isVerifying) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(12.dp),
+                                    color = Color.White,
+                                    strokeWidth = 1.5.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                BodyText(
+                                    text = "Verifying device...",
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
+                            } else {
+                                BodyText(
+                                    text = "Status: ${if (isOnline) "✅ Device Online" else "❌ Not connected"}",
+                                    color = Color.White.copy(alpha = 0.9f)
+                                )
+                            }
+                        }
+                        
+                        if (!isVerifying && deviceName != "No Device Connected") {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Tap to ${if (isOnline) "re-verify" else "test"} connection",
+                                color = Color.White.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             }
@@ -1779,7 +1883,6 @@ fun EmergencyContactsSection(
         Spacer(modifier = Modifier.height(16.dp))
         
         // Loading indicator or contact list
-        Log.d("BlackboxScreen", "Rendering EmergencyContactsSection. isLoading: $isLoading, emergencyContacts.size: ${emergencyContacts.size}")
         if (isLoading) {
             Row(
                 modifier = Modifier.fillMaxWidth(),

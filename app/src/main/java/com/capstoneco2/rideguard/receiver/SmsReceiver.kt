@@ -19,29 +19,21 @@ class SmsReceiver : BroadcastReceiver() {
     }
     
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d(TAG, "SMS BroadcastReceiver triggered")
-        
         if (intent.action == Telephony.Sms.Intents.SMS_RECEIVED_ACTION) {
             try {
                 // Extract SMS messages from the intent
                 val smsMessages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
                 
                 if (smsMessages.isNotEmpty()) {
-                    Log.i(TAG, "Received ${smsMessages.size} SMS message(s)")
-                    
                     // Process each SMS message
                     for (smsMessage in smsMessages) {
                         processSmsMessage(context, smsMessage)
                     }
-                } else {
-                    Log.w(TAG, "No SMS messages found in intent")
                 }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing SMS intent", e)
             }
-        } else {
-            Log.d(TAG, "Received non-SMS intent: ${intent.action}")
         }
     }
     
@@ -54,11 +46,7 @@ class SmsReceiver : BroadcastReceiver() {
             val messageBody = smsMessage.messageBody ?: ""
             val timestamp = smsMessage.timestampMillis
             
-            Log.i(TAG, "=== SMS RECEIVED ===")
-            Log.i(TAG, "From: $sender")
-            Log.i(TAG, "Message: $messageBody")
-            Log.i(TAG, "Timestamp: $timestamp")
-            Log.i(TAG, "==================")
+
             
             // Pass to SMS service for further processing
             val smsService = SmsService()

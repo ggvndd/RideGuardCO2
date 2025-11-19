@@ -39,8 +39,7 @@ class FCMTokenService @Inject constructor(
             val appVersion = getAppVersion(context)
             val currentTime = System.currentTimeMillis()
             
-            Log.d("FCMTokenService", "Saving/updating FCM token for multi-user device")
-            Log.d("FCMTokenService", "User: $userId, Device: $deviceId, Token: ${token.take(20)}...")
+
             
             // Look for existing token document for this specific user-device-token combination
             val existingTokenQuery = fcmTokensCollection
@@ -63,7 +62,7 @@ class FCMTokenService @Inject constructor(
                 )
                 
                 existingDoc.reference.update(updates).await()
-                Log.i("FCMTokenService", "Updated existing FCM token for user $userId: ${existingDoc.id}")
+
                 return@withContext Result.success(existingDoc.id)
             } else {
                 // Check if this is the first user on this device to set as primary
@@ -87,7 +86,7 @@ class FCMTokenService @Inject constructor(
                 )
                 
                 val newTokenRef = fcmTokensCollection.add(tokenData).await()
-                Log.i("FCMTokenService", "Created new FCM token for user $userId: ${newTokenRef.id} (primary: $isPrimary)")
+
                 return@withContext Result.success(newTokenRef.id)
             }
             
@@ -103,7 +102,7 @@ class FCMTokenService @Inject constructor(
     suspend fun getDeviceUserTokens(context: Context): Result<List<FCMToken>> {
         return try {
             val deviceId = getDeviceId(context)
-            Log.d("FCMTokenService", "Retrieving all user FCM tokens for device: $deviceId")
+
             
             val tokensQuery = fcmTokensCollection
                 .whereEqualTo("deviceId", deviceId)
@@ -134,7 +133,7 @@ class FCMTokenService @Inject constructor(
                 }
             }.sortedByDescending { it.lastUsedAt } // Most recently used first
             
-            Log.d("FCMTokenService", "Found ${tokens.size} user accounts on device: $deviceId")
+
             Result.success(tokens)
             
         } catch (e: Exception) {
@@ -163,7 +162,7 @@ class FCMTokenService @Inject constructor(
                 doc.reference.update("lastUsedAt", System.currentTimeMillis()).await()
             }
             
-            Log.d("FCMTokenService", "Updated last used time for user: $userId on device: $deviceId")
+
             Result.success(Unit)
             
         } catch (e: Exception) {
@@ -216,16 +215,12 @@ class FCMTokenService @Inject constructor(
             // Only cleanup current user's tokens to avoid permission issues
             val currentUserId = getCurrentUserId(context)
             if (currentUserId == null) {
-                Log.d("FCMTokenService", "No current user, skipping cleanup")
                 return@withContext Result.success(0)
             }
-            
-            Log.d("FCMTokenService", "Starting smart cleanup for current user: $currentUserId")
             
             val thirtyDaysAgo = System.currentTimeMillis() - 30 * 24 * 60 * 60 * 1000L
             val deviceId = getDeviceId(context)
             
-            Log.d("FCMTokenService", "Looking for tokens older than 30 days for user $currentUserId on device $deviceId")
             
             // Only look at current user's tokens on this device
             val userTokensQuery = fcmTokensCollection

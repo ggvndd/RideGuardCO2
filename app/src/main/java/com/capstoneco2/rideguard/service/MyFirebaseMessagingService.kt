@@ -25,16 +25,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private val emergencyNotificationManager = EmergencyNotificationManager()
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        Log.d(TAG, "📱 FCM Message received from: ${remoteMessage.from}")
-
         // Check if message contains a data payload
         if (remoteMessage.data.isNotEmpty()) {
-            Log.d(TAG, "📊 Message data payload: ${remoteMessage.data}")
-            
-            // Log each data field individually for debugging
-            remoteMessage.data.forEach { (key, value) ->
-                Log.d(TAG, "📊   $key = $value")
-            }
             
             val title = remoteMessage.data["title"] ?: "RideGuard Alert"
             val body = remoteMessage.data["body"] ?: "New notification"
@@ -59,7 +51,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         // Check if message contains a notification payload (fallback)
         remoteMessage.notification?.let { notification ->
-            Log.d(TAG, "Message Notification Body: ${notification.body}")
             showNotification(
                 notification.title ?: "RideGuard",
                 notification.body ?: "New notification",
@@ -69,14 +60,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        Log.d(TAG, "Refreshed token: $token")
-        
         // Send the new token to your server
         sendRegistrationTokenToServer(token)
     }
 
     private fun handleEmergencyNotification(data: Map<String, String>, title: String, body: String) {
-        Log.d(TAG, "Handling emergency notification")
         
         // Create intent with emergency data
         val intent = Intent(this, MainActivity::class.java).apply {
@@ -196,8 +184,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     private fun sendRegistrationTokenToServer(token: String) {
         // TODO: Send token to your backend server
-        Log.d(TAG, "Sending registration token to server: ${token.take(20)}...")
-        
         // You can implement this to automatically update the FCM token in your backend
         // For now, the MainActivity handles this when the user logs in
     }
@@ -216,7 +202,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
      * Expected format: "Your emergency contact [name] has been in a traffic accident. Location: [lat], [lng]. Tap to help them get emergency assistance."
      */
     private fun parseEmergencyDataFromBody(body: String): MutableMap<String, String> {
-        Log.d(TAG, "🔍 Parsing emergency data from body: $body")
         
         val data = mutableMapOf<String, String>()
         
@@ -241,13 +226,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             data["crash_id"] = "PARSED_${System.currentTimeMillis()}"
             data["navigate_to"] = "Blackbox"
             
-            Log.d(TAG, "✅ Parsed emergency data:")
-            Log.d(TAG, "   Crash victim: $crashVictimName")
-            Log.d(TAG, "   Location: $latitude, $longitude")
-            Log.d(TAG, "   User role: emergency_contact")
-            
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error parsing emergency data from body: ${e.message}")
+            Log.e(TAG, "Error parsing emergency data from body: ${e.message}")
             // Provide fallback data
             data["emergency_type"] = "crash"
             data["user_role"] = "emergency_contact"

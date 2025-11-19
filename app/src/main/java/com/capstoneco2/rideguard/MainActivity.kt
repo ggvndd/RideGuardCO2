@@ -68,12 +68,7 @@ class MainActivity : ComponentActivity() {
         val receiveSmsGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
         
         if (readSmsGranted && receiveSmsGranted) {
-            Log.i(TAG, "✅ SMS permissions granted successfully!")
             onSmsPermissionsGranted()
-        } else {
-            Log.w(TAG, "❌ SMS permissions denied. SMS reading functionality will not work.")
-            Log.w(TAG, "READ_SMS granted: $readSmsGranted")
-            Log.w(TAG, "RECEIVE_SMS granted: $receiveSmsGranted")
         }
     }
     
@@ -142,13 +137,6 @@ class MainActivity : ComponentActivity() {
 
                 // Get new FCM registration token
                 val token = task.result
-                Log.d(TAG, "FCM Registration Token: $token")
-                Log.i(TAG, "Token length: ${token?.length}")
-                
-                // Print token in a way that's easy to copy from logs
-                println("=== FCM REGISTRATION TOKEN ===")
-                println(token)
-                println("==============================")
                 
                 // Save token to database (when user is authenticated)
                 saveFCMTokenToDatabase(token)
@@ -161,7 +149,6 @@ class MainActivity : ComponentActivity() {
      */
     private fun saveFCMTokenToDatabase(token: String?) {
         if (token == null) {
-            Log.w(TAG, "FCM token is null, cannot save to database")
             return
         }
         
@@ -172,8 +159,6 @@ class MainActivity : ComponentActivity() {
                 val currentUserId = getCurrentUserId()
                 
                 if (currentUserId != null) {
-                    Log.d(TAG, "Saving FCM token to database for user: $currentUserId")
-                    
                     val result = fcmTokenService.saveOrUpdateFCMToken(
                         userId = currentUserId,
                         userDisplayName = getCurrentUserDisplayName() ?: "Unknown User",
@@ -181,13 +166,10 @@ class MainActivity : ComponentActivity() {
                         context = this@MainActivity
                     )
                     
-                    if (result.isSuccess) {
-                        Log.i(TAG, "Successfully saved FCM token to database")
-                    } else {
+                    if (!result.isSuccess) {
                         Log.e(TAG, "Failed to save FCM token: ${result.exceptionOrNull()?.message}")
                     }
                 } else {
-                    Log.d(TAG, "User not authenticated yet, FCM token will be saved after login")
                     storeTokenForLaterSave(token)
                 }
             } catch (e: Exception) {
@@ -217,15 +199,11 @@ class MainActivity : ComponentActivity() {
      * Store FCM token temporarily for saving after authentication
      */
     private fun storeTokenForLaterSave(token: String) {
-        Log.d(TAG, "Storing FCM token for later save: ${token.takeLast(10)}")
-        
         val sharedPref = getSharedPreferences("fcm_prefs", Context.MODE_PRIVATE)
         sharedPref.edit {
             putString("pending_fcm_token", token)
             putLong("token_timestamp", System.currentTimeMillis())
         }
-        
-        Log.i(TAG, "FCM token stored temporarily in SharedPreferences, will be saved after user authentication")
     }
 
     /**
@@ -238,7 +216,6 @@ class MainActivity : ComponentActivity() {
                 val pendingToken = sharedPref.getString("pending_fcm_token", null)
                 
                 if (pendingToken != null && getCurrentUserId() != null) {
-                    Log.d(TAG, "Found pending FCM token, saving to database")
                     saveFCMTokenToDatabase(pendingToken)
                     
                     // Clear the pending token after saving
@@ -246,8 +223,6 @@ class MainActivity : ComponentActivity() {
                         remove("pending_fcm_token")
                         remove("token_timestamp")
                     }
-                    
-                    Log.i(TAG, "Pending FCM token saved and cleared from temporary storage")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save pending FCM token", e)
@@ -264,13 +239,8 @@ class MainActivity : ComponentActivity() {
             try {
                 val userId = getCurrentUserId()
                 if (userId != null) {
-                    Log.d(TAG, "Performing periodic FCM token cleanup (with safety checks)")
-                    
                     val result = fcmTokenService.cleanupInactiveFCMTokens(this@MainActivity)
-                    if (result.isSuccess) {
-                        val deletedCount = result.getOrNull() ?: 0
-                        Log.i(TAG, "Periodic cleanup completed: $deletedCount inactive tokens removed")
-                    } else {
+                    if (!result.isSuccess) {
                         Log.w(TAG, "Periodic cleanup failed: ${result.exceptionOrNull()?.message}")
                     }
                 }
@@ -299,10 +269,8 @@ class MainActivity : ComponentActivity() {
         }
         
         if (permissionsNeeded.isNotEmpty()) {
-            Log.d(TAG, "Requesting SMS permissions: ${permissionsNeeded.joinToString(", ")}")
             smsPermissionLauncher.launch(permissionsNeeded.toTypedArray())
         } else {
-            Log.i(TAG, "SMS permissions already granted")
             onSmsPermissionsGranted()
         }
     }
@@ -313,71 +281,12 @@ class MainActivity : ComponentActivity() {
      * Called when SMS permissions are granted - initialize SMS functionality
      */
     private fun onSmsPermissionsGranted() {
-        Log.i(TAG, "🎉 SMS functionality initialized!")
-        Log.i(TAG, "📱 The app will now log all incoming SMS messages to console")
-        Log.i(TAG, "📱 Emergency keywords will be detected and highlighted")
-        
-        // Test reading existing SMS messages for debugging
-        testReadExistingSmsMessages()
-        
-        // Log that the receiver is ready
-        Log.i(TAG, "📡 SMS Receiver is now active and waiting for incoming messages...")
-        Log.i(TAG, "📡 Send an SMS to this device to see it logged in the console!")
-        
-        // Print some debugging info
-        printSmsDebuggingInfo()
+        // SMS functionality initialized
     }
     
-    /**
-     * Test reading existing SMS messages from device
-     */
-    private fun testReadExistingSmsMessages() {
-        Log.d(TAG, "🧪 Testing SMS reading functionality...")
-        
-        lifecycleScope.launch {
-            try {
-                val existingMessages = smsService.getAllSmsMessages(this@MainActivity)
-                Log.i(TAG, "📊 Found ${existingMessages.size} existing SMS messages")
-                
-                if (existingMessages.isEmpty()) {
-                    Log.i(TAG, "📱 No existing SMS messages found. Send an SMS to test the functionality!")
-                }
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "Error testing SMS reading", e)
-            }
-        }
-    }
+
     
-    /**
-     * Print debugging information for SMS functionality
-     */
-    private fun printSmsDebuggingInfo() {
-        Log.i(TAG, "╔════════════════════════════════════════════════════════════════")
-        Log.i(TAG, "║ SMS DEBUGGING INFORMATION")
-        Log.i(TAG, "╠════════════════════════════════════════════════════════════════")
-        Log.i(TAG, "║ 📱 SMS functionality is now ACTIVE")
-        Log.i(TAG, "║ 📡 Listening for incoming SMS messages...")
-        Log.i(TAG, "║ 🚨 Emergency keyword detection is ENABLED")
-        Log.i(TAG, "║ 📝 All SMS will be logged to Android Studio console")
-        Log.i(TAG, "║ ")
-        Log.i(TAG, "║ Emergency Keywords Monitored:")
-        Log.i(TAG, "║ • English: help, emergency, urgent, accident, danger, etc.")
-        Log.i(TAG, "║ • Spanish: socorro, emergencia, urgente, accidente, etc.")
-        Log.i(TAG, "║ ")
-        Log.i(TAG, "║ To Test:")
-        Log.i(TAG, "║ 1. Send an SMS to this device from another phone")
-        Log.i(TAG, "║ 2. Check Android Studio Logcat for SMS logs")
-        Log.i(TAG, "║ 3. Try sending SMS with word 'emergency' to test detection")
-        Log.i(TAG, "╚════════════════════════════════════════════════════════════════")
-        
-        // Also print to system console for easier debugging
-        println("=== SMS FUNCTIONALITY ACTIVE ===")
-        println("📱 Ready to intercept and log SMS messages")
-        println("🚨 Emergency detection enabled")
-        println("📝 Check Android Studio Logcat for detailed SMS logs")
-        println("================================")
-    }
+
 }
 
 @Composable

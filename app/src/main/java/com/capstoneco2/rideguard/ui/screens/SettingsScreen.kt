@@ -290,7 +290,6 @@ fun SettingsScreen(
                                 } else {
                                     "❌ API Connection Failed: ${result.exceptionOrNull()?.message}"
                                 }
-                                Log.d("API_TEST", "API Test Result: $apiTestResult")
                             } catch (e: Exception) {
                                 apiTestResult = "❌ Error: ${e.message}"
                             } finally {

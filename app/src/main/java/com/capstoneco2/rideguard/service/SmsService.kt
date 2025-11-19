@@ -49,14 +49,7 @@ class SmsService {
             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             val formattedDate = dateFormat.format(Date(timestamp))
             
-            Log.i(TAG, "╔════════════════════════════════════════════════════════════════")
-            Log.i(TAG, "║ SMS MESSAGE INTERCEPTED")
-            Log.i(TAG, "╠════════════════════════════════════════════════════════════════")
-            Log.i(TAG, "║ Sender: $sender")
-            Log.i(TAG, "║ Time: $formattedDate")
-            Log.i(TAG, "║ Message Length: ${message.length} characters")
-            Log.i(TAG, "║ Content: $message")
-            Log.i(TAG, "╚════════════════════════════════════════════════════════════════")
+            // SMS message intercepted - processing
             
             // Check for crash data first
             val crashData = parseCrashData(message)
@@ -67,34 +60,17 @@ class SmsService {
             val isEmergency = emergencyKeywordsFound.isNotEmpty() || isCrashData
             
             if (isCrashData) {
-                Log.w(TAG, "🚨 CRASH DATA SMS DETECTED!")
-                Log.w(TAG, "🚨 Crash ID: ${crashData!!.crashId}")
-                Log.w(TAG, "🚨 RideGuard ID: ${crashData.rideguardId}")
-                Log.w(TAG, "🚨 Location: ${crashData.latitude}, ${crashData.longitude}")
-                Log.w(TAG, "🚨 From: $sender")
-                
-                // Handle crash data as emergency with crash data
                 handlePotentialEmergency(context, sender, message, listOf("crash_data"), crashData)
             } else if (isEmergency) {
-                Log.w(TAG, "⚠️ POTENTIAL EMERGENCY SMS DETECTED!")
-                Log.w(TAG, "⚠️ Keywords found: ${emergencyKeywordsFound.joinToString(", ")}")
-                Log.w(TAG, "⚠️ From: $sender")
-                Log.w(TAG, "⚠️ Message: $message")
-                
-                // Handle emergency situation
                 handlePotentialEmergency(context, sender, message, emergencyKeywordsFound, null)
             }
             
             // Send SMS data to server via HTTP POST (only if gateway is enabled)
             if (isGatewayEnabled(context)) {
-                Log.i(TAG, "🌐 Gateway mode enabled - forwarding SMS to server")
                 sendSmsDataToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound, crashData)
-            } else {
-                Log.d(TAG, "📱 Gateway mode disabled - SMS processed locally only")
             }
             
-            // Log additional SMS statistics
-            logSmsStatistics(sender, message)
+            // SMS processing completed
             
         } catch (e: Exception) {
             Log.e(TAG, "Error processing SMS message", e)
@@ -115,7 +91,6 @@ class SmsService {
         crashData: CrashData? = null
     ) {
         try {
-            Log.d(TAG, "🌐 Preparing to send SMS data to server...")
             
             // Get device/user context for better tracking
             val deviceId = getDeviceId(context)
@@ -126,7 +101,6 @@ class SmsService {
                 try {
                     // Use emergency endpoint for urgent messages or crash data
                     val result = if (isEmergency) {
-                        Log.w(TAG, "🚨 Using emergency SMS transmission")
                         
                         // If we have crash data, include location from it
                         val location = crashData?.let { "${it.latitude},${it.longitude}" }
@@ -156,12 +130,10 @@ class SmsService {
                     
                     result.fold(
                         onSuccess = { response ->
-                            Log.i(TAG, "✅ SMS data successfully sent to server")
-                            Log.d(TAG, "Server response: $response")
+                            // SMS data successfully sent to server
                         },
                         onFailure = { error ->
-                            Log.e(TAG, "❌ Failed to send SMS data to server", error)
-                            // Could implement retry logic here if needed
+                            Log.e(TAG, "Failed to send SMS data to server", error)
                         }
                     )
                     
@@ -184,8 +156,6 @@ class SmsService {
      */
     private fun parseCrashData(message: String): CrashData? {
         try {
-            Log.d(TAG, "🔍 Attempting to parse crash data from message...")
-            Log.d(TAG, "🔍 Message to parse: '$message'")
             
             val crashData = CrashData()
             
@@ -218,7 +188,6 @@ class SmsService {
                     val match = pattern.find(message)
                     if (match != null) {
                         crashData.crashId = match.groupValues[1].trim()
-                        Log.d(TAG, "📋 Found crash_id: '${crashData.crashId}' using pattern: ${pattern.pattern}")
                     }
                 }
             }
@@ -229,7 +198,6 @@ class SmsService {
                     val match = pattern.find(message)
                     if (match != null) {
                         crashData.rideguardId = match.groupValues[1].trim()
-                        Log.d(TAG, "📋 Found rideguard_id: '${crashData.rideguardId}' using pattern: ${pattern.pattern}")
                     }
                 }
             }
@@ -241,7 +209,6 @@ class SmsService {
                     if (match != null) {
                         val longitudeStr = match.groupValues[1].trim()
                         crashData.longitude = longitudeStr.toDoubleOrNull()
-                        Log.d(TAG, "📍 Found longitude: '$longitudeStr' -> ${crashData.longitude} using pattern: ${pattern.pattern}")
                     }
                 }
             }
@@ -253,7 +220,6 @@ class SmsService {
                     if (match != null) {
                         val latitudeStr = match.groupValues[1].trim()
                         crashData.latitude = latitudeStr.toDoubleOrNull()
-                        Log.d(TAG, "📍 Found latitude: '$latitudeStr' -> ${crashData.latitude} using pattern: ${pattern.pattern}")
                     }
                 }
             }
@@ -265,13 +231,8 @@ class SmsService {
                                   crashData.latitude != null
             
             if (isValidCrashData) {
-                Log.i(TAG, "✅ Successfully parsed crash data:")
-                Log.i(TAG, "✅ Crash ID: '${crashData.crashId}'")
-                Log.i(TAG, "✅ RideGuard ID: '${crashData.rideguardId}'")
-                Log.i(TAG, "✅ Location: ${crashData.latitude}, ${crashData.longitude}")
                 return crashData
             } else {
-                Log.w(TAG, "⚠️ Regex parsing incomplete, trying fallback parser...")
                 return parseCrashDataFallback(message)
             }
             
@@ -287,7 +248,6 @@ class SmsService {
      */
     private fun parseCrashDataFallback(message: String): CrashData? {
         try {
-            Log.d(TAG, "🔄 Using fallback parser...")
             
             val crashData = CrashData()
             val cleanMessage = message.replace("\\s+".toRegex(), " ").lowercase()
@@ -311,25 +271,21 @@ class SmsService {
                             "crash_id" -> {
                                 if (crashData.crashId == null) {
                                     crashData.crashId = value.uppercase()
-                                    Log.d(TAG, "🔄 Fallback found crash_id: '$value'")
                                 }
                             }
                             "rideguard_id" -> {
                                 if (crashData.rideguardId == null) {
                                     crashData.rideguardId = value.uppercase()
-                                    Log.d(TAG, "🔄 Fallback found rideguard_id: '$value'")
                                 }
                             }
                             "longitude" -> {
                                 if (crashData.longitude == null) {
                                     crashData.longitude = value.toDoubleOrNull()
-                                    Log.d(TAG, "🔄 Fallback found longitude: '$value' -> ${crashData.longitude}")
                                 }
                             }
                             "latitude" -> {
                                 if (crashData.latitude == null) {
                                     crashData.latitude = value.toDoubleOrNull()
-                                    Log.d(TAG, "🔄 Fallback found latitude: '$value' -> ${crashData.latitude}")
                                 }
                             }
                         }
@@ -340,7 +296,6 @@ class SmsService {
             
             // Try to extract numeric values as coordinates if field names are missing
             if (crashData.longitude == null || crashData.latitude == null) {
-                Log.d(TAG, "🔄 Trying to extract coordinates from numbers...")
                 val numberPattern = "([\\-+]?\\d+\\.\\d+)".toRegex()
                 val numbers = numberPattern.findAll(message).map { it.value.toDoubleOrNull() }.filterNotNull().toList()
                 
@@ -348,32 +303,26 @@ class SmsService {
                     // Assume first number is longitude, second is latitude
                     if (crashData.longitude == null) {
                         crashData.longitude = numbers[0]
-                        Log.d(TAG, "🔄 Extracted longitude from numbers: ${numbers[0]}")
                     }
                     if (crashData.latitude == null) {
                         crashData.latitude = numbers[1]
-                        Log.d(TAG, "🔄 Extracted latitude from numbers: ${numbers[1]}")
                     }
                 }
             }
             
             // Try to extract single letter/number IDs if field names are missing
             if (crashData.crashId == null || crashData.rideguardId == null) {
-                Log.d(TAG, "🔄 Trying to extract IDs from single characters...")
                 val letterPattern = "([A-Z])".toRegex()
                 val letters = letterPattern.findAll(message.uppercase()).map { it.value }.toList()
                 
                 if (letters.isNotEmpty()) {
                     if (crashData.crashId == null) {
                         crashData.crashId = letters[0]
-                        Log.d(TAG, "🔄 Extracted crash_id from letters: ${letters[0]}")
                     }
                     if (crashData.rideguardId == null && letters.size > 1) {
                         crashData.rideguardId = letters[1]
-                        Log.d(TAG, "🔄 Extracted rideguard_id from letters: ${letters[1]}")
                     } else if (crashData.rideguardId == null) {
                         crashData.rideguardId = letters[0] // Use same if only one letter
-                        Log.d(TAG, "🔄 Using same letter for rideguard_id: ${letters[0]}")
                     }
                 }
             }
@@ -385,17 +334,8 @@ class SmsService {
                                   crashData.latitude != null
             
             if (isValidCrashData) {
-                Log.i(TAG, "✅ Fallback parser success:")
-                Log.i(TAG, "✅ Crash ID: '${crashData.crashId}'")
-                Log.i(TAG, "✅ RideGuard ID: '${crashData.rideguardId}'")
-                Log.i(TAG, "✅ Location: ${crashData.latitude}, ${crashData.longitude}")
                 return crashData
             } else {
-                Log.w(TAG, "❌ Fallback parser also failed:")
-                Log.w(TAG, "❌ crash_id: ${crashData.crashId}")
-                Log.w(TAG, "❌ rideguard_id: ${crashData.rideguardId}")
-                Log.w(TAG, "❌ longitude: ${crashData.longitude}")
-                Log.w(TAG, "❌ latitude: ${crashData.latitude}")
                 return null
             }
             
@@ -485,12 +425,6 @@ class SmsService {
         crashData: CrashData? = null
     ) {
         try {
-            Log.e(TAG, "🚨 EMERGENCY ALERT SYSTEM TRIGGERED 🚨")
-            Log.e(TAG, "🚨 Sender: $sender")
-            Log.e(TAG, "🚨 Emergency Keywords: ${keywords.joinToString(", ")}")
-            Log.e(TAG, "🚨 Full Message: $message")
-            Log.e(TAG, "🚨 Timestamp: ${Date()}")
-            Log.e(TAG, "🚨 Action Required: Review this message immediately!")
             
             // Show a high-priority notification to the user
             try {
@@ -524,37 +458,9 @@ class SmsService {
         }
     }
     
-    /**
-     * Log SMS statistics for debugging
-     */
-    private fun logSmsStatistics(sender: String, message: String) {
-        try {
-            val wordCount = message.split("\\s+".toRegex()).size
-            val hasNumbers = message.any { it.isDigit() }
-            val hasSpecialChars = message.any { !it.isLetterOrDigit() && !it.isWhitespace() }
-            
-            Log.d(TAG, "📊 SMS Statistics:")
-            Log.d(TAG, "📊 Word Count: $wordCount")
-            Log.d(TAG, "📊 Contains Numbers: $hasNumbers")
-            Log.d(TAG, "📊 Contains Special Characters: $hasSpecialChars")
-            Log.d(TAG, "📊 Sender Domain: ${extractDomain(sender)}")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error logging SMS statistics", e)
-        }
-    }
+
     
-    /**
-     * Extract domain or service name from sender
-     */
-    private fun extractDomain(sender: String): String {
-        return when {
-            sender.contains("@") -> sender.substringAfter("@")
-            sender.all { it.isDigit() || it == '+' } -> "Phone Number"
-            sender.length <= 6 -> "Short Code"
-            else -> "Unknown Sender Type"
-        }
-    }
+
     
     /**
      * Get all SMS messages from device (for testing/debugging)
@@ -586,18 +492,12 @@ class SmsService {
                     
                     smsList.add(SmsData(address, body, date, type))
                     
-                    Log.d(TAG, "📱 Existing SMS #${count + 1}:")
-                    Log.d(TAG, "📱 From/To: $address")
-                    Log.d(TAG, "📱 Type: ${if (type == 1) "Received" else "Sent"}")
-                    Log.d(TAG, "📱 Date: ${Date(date)}")
-                    Log.d(TAG, "📱 Message: ${body.take(100)}${if (body.length > 100) "..." else ""}")
-                    Log.d(TAG, "📱 ─────────────────────────────────")
+
                     
                     count++
                 }
                 
-                Log.i(TAG, "📱 Total SMS messages found: ${c.count}")
-                Log.i(TAG, "📱 Showing first $count messages")
+
             }
             
         } catch (e: Exception) {
@@ -617,8 +517,7 @@ class SmsService {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_GATEWAY_ENABLED, enabled).apply()
         
-        Log.i(TAG, "🌐 SMS Gateway ${if (enabled) "ENABLED" else "DISABLED"}")
-        Log.i(TAG, "🌐 SMS messages will ${if (enabled) "be forwarded to server" else "stay local only"}")
+
     }
     
     /**
@@ -648,7 +547,6 @@ class SmsService {
     suspend fun testGatewayConnection(context: Context): Result<String> {
         return if (isGatewayEnabled(context)) {
             try {
-                Log.d(TAG, "🌐 Testing gateway connection...")
                 val result = httpService.testServerConnection()
                 result.fold(
                     onSuccess = { connected ->
@@ -657,17 +555,16 @@ class SmsService {
                         } else {
                             "Gateway reachable but server returned error"
                         }
-                        Log.i(TAG, "✅ $message")
                         Result.success(message)
                     },
                     onFailure = { error ->
                         val message = "Gateway connection failed: ${error.message}"
-                        Log.e(TAG, "❌ $message")
+                        Log.e(TAG, message)
                         Result.failure(error)
                     }
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Gateway test error", e)
+                Log.e(TAG, "Gateway test error", e)
                 Result.failure(e)
             }
         } else {

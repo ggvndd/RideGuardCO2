@@ -1,6 +1,5 @@
 package com.capstoneco2.rideguard.ui.screens
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -119,7 +118,7 @@ private fun getCurrentWiFiDeviceInfo(context: Context): WiFiDeviceInfo? {
             )
         }
     } catch (e: Exception) {
-        Log.e("WiFiUtils", "Error getting current WiFi info", e)
+        // Error getting WiFi info
     }
     
     return null
@@ -181,26 +180,22 @@ fun HomeScreen(
                 connectedDeviceName = deviceInfo.ssid
                 blackboxSerialNumber = deviceInfo.ssid
                 isBlackboxOnline = true
-                Log.d("HomeScreen", "RideGuard device detected: ${deviceInfo.ssid}")
+
             } ?: run {
                 connectedDeviceName = "No Device Connected"
                 blackboxSerialNumber = "No Device Connected"
                 isBlackboxOnline = false
-                Log.d("HomeScreen", "No RideGuard device connected")
+
             }
         } else {
-            Log.w("HomeScreen", "Wi-Fi permissions not granted, cannot detect device")
+
         }
     }
     
     // Load emergency contacts when screen loads
     LaunchedEffect(currentUserUid) {
-        Log.d("HomeScreen", "LaunchedEffect triggered. CurrentUserUid: $currentUserUid")
         if (currentUserUid.isNotEmpty()) {
-            Log.d("HomeScreen", "Loading emergency contacts for user: $currentUserUid")
             emergencyContactViewModel.loadEmergencyContacts(currentUserUid)
-        } else {
-            Log.w("HomeScreen", "CurrentUserUid is empty, not loading emergency contacts")
         }
     }
 
@@ -565,7 +560,7 @@ private fun HomeEmergencyContactsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Log.d("HomeScreen", "Rendering emergency contacts section. isLoading: $isLoading, emergencyContacts.size: ${emergencyContacts.size}")
+
         
         if (isLoading) {
             Row(
