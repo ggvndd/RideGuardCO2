@@ -56,9 +56,7 @@ class MainActivity : ComponentActivity() {
     private val smsService = SmsService()
     private var intentUpdateCallback: ((Intent?) -> Unit)? = null
     
-    companion object {
-        private const val TAG = "MainActivity"
-    }
+
     
     // Modern permission request launcher
     private val smsPermissionLauncher = registerForActivityResult(
@@ -115,27 +113,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        // Update the intent so it can be processed by the composable
         setIntent(intent)
-        
-        Log.d(TAG, "📱 MainActivity.onNewIntent called")
-        intent?.extras?.keySet()?.forEach { key ->
-            Log.d(TAG, "📱 Intent extra: $key = ${intent.extras?.get(key)}")
-        }
-        
-        // Notify the composable about the new intent
         intentUpdateCallback?.invoke(intent)
     }
     
     private fun retrieveFCMToken() {
         FirebaseMessaging.getInstance().token
             .addOnCompleteListener { task ->
-                if (!task.isSuccessful) {
-                    Log.w(TAG, "Fetching FCM registration token failed", task.exception)
-                    return@addOnCompleteListener
-                }
-
-                // Get new FCM registration token
+        if (!task.isSuccessful) {
+            return@addOnCompleteListener
+        }                // Get new FCM registration token
                 val token = task.result
                 
                 // Save token to database (when user is authenticated)
@@ -154,8 +141,7 @@ class MainActivity : ComponentActivity() {
         
         lifecycleScope.launch {
             try {
-                
-                // Mock implementation - replace with actual user ID when available
+
                 val currentUserId = getCurrentUserId()
                 
                 if (currentUserId != null) {
@@ -166,14 +152,12 @@ class MainActivity : ComponentActivity() {
                         context = this@MainActivity
                     )
                     
-                    if (!result.isSuccess) {
-                        Log.e(TAG, "Failed to save FCM token: ${result.exceptionOrNull()?.message}")
-                    }
+                    // FCM token save result handled internally
                 } else {
                     storeTokenForLaterSave(token)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Exception while saving FCM token", e)
+                // Exception handled silently
             }
         }
     }
@@ -225,7 +209,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to save pending FCM token", e)
+                // Exception handled silently
             }
         }
     }
@@ -240,12 +224,10 @@ class MainActivity : ComponentActivity() {
                 val userId = getCurrentUserId()
                 if (userId != null) {
                     val result = fcmTokenService.cleanupInactiveFCMTokens(this@MainActivity)
-                    if (!result.isSuccess) {
-                        Log.w(TAG, "Periodic cleanup failed: ${result.exceptionOrNull()?.message}")
-                    }
+                    // Cleanup result handled internally
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Exception during periodic FCM token cleanup", e)
+                // Exception handled silently
             }
         }
     }
@@ -347,10 +329,8 @@ fun MyApp(
             AppScreen.SIGN_UP -> {
                 SignUpPage(
                     onSignUpSuccess = {
-                        // Firebase auth success - save pending FCM token, cleanup old tokens, and navigate to main app
                         onAuthSuccess()
                         currentScreen = AppScreen.MAIN_APP
-                        println("Sign Up successful with Firebase")
                     },
                     onSignInClick = {
                         currentScreen = AppScreen.SIGN_IN
@@ -362,17 +342,14 @@ fun MyApp(
             AppScreen.SIGN_IN -> {
                 SignInPage(
                     onSignInSuccess = {
-                        // Firebase auth success - save pending FCM token, cleanup old tokens, and navigate to main app
                         onAuthSuccess()
                         currentScreen = AppScreen.MAIN_APP
-                        println("Sign In successful with Firebase")
                     },
                     onSignUpClick = {
                         currentScreen = AppScreen.SIGN_UP
                     },
                     onForgotPasswordClick = {
-                        // Handle forgot password logic
-                        println("Forgot password clicked")
+                        // Forgot password functionality can be added here
                     },
                     authViewModel = authViewModel
                 )
@@ -383,9 +360,8 @@ fun MyApp(
                     username = authState.userProfile?.username ?: "User",
                     intent = intent,
                     onLogout = {
-                        // Navigate back to welcome screen after logout
-                        currentScreen = AppScreen.WELCOME
-                    },
+                    currentScreen = AppScreen.WELCOME
+                },
                     authViewModel = authViewModel
                 )
             }

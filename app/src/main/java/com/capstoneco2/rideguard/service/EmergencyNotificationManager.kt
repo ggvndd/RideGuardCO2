@@ -28,7 +28,7 @@ class EmergencyNotificationManager @Inject constructor() {
     fun registerEmergencyNotification(notificationId: Int) {
         synchronized(activeEmergencyNotifications) {
             activeEmergencyNotifications.add(notificationId)
-            Log.d(TAG, "Registered emergency notification ID: $notificationId")
+            // Notification registered
         }
     }
     
@@ -43,7 +43,7 @@ class EmergencyNotificationManager @Inject constructor() {
             synchronized(activeEmergencyNotifications) {
                 activeEmergencyNotifications.forEach { notificationId ->
                     notificationManager.cancel(notificationId)
-                    Log.d(TAG, "Dismissed emergency notification ID: $notificationId for crashId: $crashId")
+                    // Notification dismissed
                 }
                 
                 // Also try dismissing with standard IDs
@@ -54,7 +54,7 @@ class EmergencyNotificationManager @Inject constructor() {
                 activeEmergencyNotifications.clear()
             }
             
-            Log.d(TAG, "Dismissed emergency notifications on app enter for crash: $crashId")
+            // Emergency notifications dismissed
         } catch (e: Exception) {
             Log.e(TAG, "Error dismissing emergency notification: ${e.message}")
         }
@@ -71,7 +71,7 @@ class EmergencyNotificationManager @Inject constructor() {
             synchronized(activeEmergencyNotifications) {
                 activeEmergencyNotifications.forEach { notificationId ->
                     notificationManager.cancel(notificationId)
-                    Log.d(TAG, "Dismissed emergency notification ID: $notificationId after confirmation for crashId: $crashId")
+                    // Notification dismissed after confirmation
                 }
                 
                 // Also try dismissing with standard IDs
@@ -82,7 +82,7 @@ class EmergencyNotificationManager @Inject constructor() {
                 activeEmergencyNotifications.clear()
             }
             
-            Log.d(TAG, "Dismissed emergency notifications after emergency services confirmed for crash: $crashId")
+            // Notifications dismissed after emergency confirmation
         } catch (e: Exception) {
             Log.e(TAG, "Error dismissing emergency notification on confirmation: ${e.message}")
         }
@@ -100,7 +100,7 @@ class EmergencyNotificationManager @Inject constructor() {
                 activeEmergencyNotifications.remove(notificationId)
             }
             
-            Log.d(TAG, "Manually dismissed notification ID: $notificationId")
+            // Notification manually dismissed
         } catch (e: Exception) {
             Log.e(TAG, "Error manually dismissing notification: ${e.message}")
         }

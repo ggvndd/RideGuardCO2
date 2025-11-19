@@ -1,21 +1,22 @@
 package com.capstoneco2.rideguard.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiNetworkSpecifier
 import android.net.NetworkRequest
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.compose.ui.platform.LocalContext
@@ -25,7 +26,6 @@ import android.net.wifi.ScanResult
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.net.Network
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -83,63 +83,17 @@ import com.capstoneco2.rideguard.ui.components.SecondaryButton
 import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import com.capstoneco2.rideguard.viewmodel.EmergencyContactViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
-import java.io.BufferedReader
 
-/**
- * Verify actual device connection by testing communication
- * Returns true if device responds, false if not reachable
- */
-private suspend fun verifyDeviceConnection(): Boolean {
-    return try {
 
-        
-        withContext(Dispatchers.IO) {
-            val socket = Socket()
-            socket.soTimeout = 3000 // 3 second timeout
-            
-            try {
-                // Try to connect to the expected RideGuard device IP
-                socket.connect(java.net.InetSocketAddress("192.168.51.1", 8080), 3000)
-                
-                // Send a simple ping command
-                val output = PrintWriter(socket.getOutputStream(), true)
-                val input = BufferedReader(InputStreamReader(socket.getInputStream()))
-                
-                output.println("PING")
-                
-                // Wait for response (with timeout)
-                val response = input.readLine()
-                socket.close()
-                
-                val isValidResponse = response != null && 
-                                    (response.contains("PONG") || 
-                                     response.contains("OK") || 
-                                     response.contains("rideguard", ignoreCase = true) ||
-                                     response.contains("battery", ignoreCase = true))
-                
-
-                isValidResponse
-                
-            } catch (e: Exception) {
-                socket.close()
-
-                false
-            }
-        }
-        
-    } catch (e: Exception) {
-        Log.e("DeviceVerification", "Error verifying device connection", e)
-        false
-    }
-}
 
 // Data classes for Wi-Fi management
 data class WiFiNetwork(
@@ -197,9 +151,7 @@ fun BlackboxScreen(
         }
     }
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     var isDeviceOnline by remember { mutableStateOf(false) }
-    var isVerifyingDevice by remember { mutableStateOf(false) }
     var deletionRate by remember { mutableStateOf("3 Hours") }
     var showPairingDialog by remember { mutableStateOf(false) }
     var deviceName by remember { mutableStateOf("No Device Connected") }
@@ -247,27 +199,8 @@ fun BlackboxScreen(
                     connectionStatus = WiFiConnectionStatus.CONNECTED
                 )
                 
-                // Don't automatically set as online - verify device connection first
-                isVerifyingDevice = true
-                
-                // Verify actual device connection in background
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    try {
-                        val deviceReachable = verifyDeviceConnection()
-                        isDeviceOnline = deviceReachable
-                        
-                        if (deviceReachable) {
-
-                        } else {
-
-                        }
-                    } catch (e: Exception) {
-                        Log.e("BlackboxScreen", "Error verifying device", e)
-                        isDeviceOnline = false
-                    } finally {
-                        isVerifyingDevice = false
-                    }
-                }
+                // Set device as online based on Wi-Fi connection
+                isDeviceOnline = true
             } ?: run {
                 isDeviceOnline = false
                 deviceName = "No Device Connected"
@@ -317,29 +250,9 @@ fun BlackboxScreen(
                 BlackBoxDeviceCard(
                     deviceName = deviceName,
                     isOnline = isDeviceOnline,
-                    isVerifying = isVerifyingDevice,
                     onToggleStatus = { 
-                        // Manual verification when user clicks
-                        if (!isVerifyingDevice) {
-                            isVerifyingDevice = true
-                            coroutineScope.launch {
-                                try {
-                                    val deviceReachable = verifyDeviceConnection()
-                                    isDeviceOnline = deviceReachable
-                                    
-                                    if (deviceReachable) {
-
-                                    } else {
-
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("BlackboxScreen", "Manual verification error", e)
-                                    isDeviceOnline = false
-                                } finally {
-                                    isVerifyingDevice = false
-                                }
-                            }
-                        }
+                        // Simple toggle based on Wi-Fi connectivity
+                        // Device status is automatically updated through Wi-Fi monitoring
                     }
                 )
             }
@@ -1550,8 +1463,7 @@ private fun PairingSuccessContent(
 private fun BlackBoxDeviceCard(
     deviceName: String,
     isOnline: Boolean,
-    isVerifying: Boolean = false,
-    onToggleStatus: () -> Unit
+    onToggleStatus: () -> Unit = {}
 ) {
     
     // Animate card color transition
@@ -1612,36 +1524,10 @@ private fun BlackBoxDeviceCard(
                         
                         Spacer(modifier = Modifier.height(4.dp))
                         
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (isVerifying) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(12.dp),
-                                    color = Color.White,
-                                    strokeWidth = 1.5.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                BodyText(
-                                    text = "Verifying device...",
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            } else {
-                                BodyText(
-                                    text = "Status: ${if (isOnline) "✅ Device Online" else "❌ Not connected"}",
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-                        
-                        if (!isVerifying && deviceName != "No Device Connected") {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Tap to ${if (isOnline) "re-verify" else "test"} connection",
-                                color = Color.White.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        BodyText(
+                            text = "Status: ${if (isOnline) "Online" else "Not connected"}",
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
                     }
                 }
             }

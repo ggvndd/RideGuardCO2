@@ -27,7 +27,7 @@ class BackendNotificationService @Inject constructor(
     constructor() : this(FirebaseFirestore.getInstance())
     companion object {
         private const val TAG = "BackendNotificationService"
-        // TODO: Replace with your actual deployed backend URL
+        // Backend URL for emergency notifications
         private const val BACKEND_BASE_URL = "https://backend-rideguard.vercel.app" // e.g., "https://your-app.vercel.app"
         private const val NOTIFY_ENDPOINT = "/api/notify"
     }

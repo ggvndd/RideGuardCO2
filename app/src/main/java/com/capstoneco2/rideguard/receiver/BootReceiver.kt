@@ -18,21 +18,16 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED -> {
-                Log.i(TAG, "🔄 Device boot completed - RideGuard SMS monitoring ready")
-                Log.i(TAG, "🔄 SMS emergency detection system is now active in background")
-                
-                // Optional: You could start any background services here if needed
-                // For now, SMS receiver is automatically enabled by the system
+                // Device boot completed - SMS monitoring ready
             }
             
             Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_PACKAGE_REPLACED -> {
-                Log.i(TAG, "🔄 RideGuard app updated - SMS monitoring restored")
-                Log.i(TAG, "🔄 Background SMS processing continues after app update")
+                // App updated - SMS monitoring restored
             }
             
             else -> {
-                Log.d(TAG, "Received intent: ${intent.action}")
+                // Other intent received
             }
         }
     }

@@ -183,9 +183,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendRegistrationTokenToServer(token: String) {
-        // TODO: Send token to your backend server
-        // You can implement this to automatically update the FCM token in your backend
-        // For now, the MainActivity handles this when the user logs in
+        // FCM token registration handled by MainActivity on user authentication
     }
     
     /**

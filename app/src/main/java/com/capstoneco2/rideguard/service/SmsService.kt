@@ -49,7 +49,7 @@ class SmsService {
             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             val formattedDate = dateFormat.format(Date(timestamp))
             
-            // SMS message intercepted - processing
+
             
             // Check for crash data first
             val crashData = parseCrashData(message)
@@ -70,7 +70,7 @@ class SmsService {
                 sendSmsDataToServer(context, sender, message, timestamp, isEmergency, emergencyKeywordsFound, crashData)
             }
             
-            // SMS processing completed
+
             
         } catch (e: Exception) {
             Log.e(TAG, "Error processing SMS message", e)
@@ -91,18 +91,14 @@ class SmsService {
         crashData: CrashData? = null
     ) {
         try {
-            
-            // Get device/user context for better tracking
+
             val deviceId = getDeviceId(context)
             val userId = getUserId(context)
             
             // Use coroutine scope to send data asynchronously
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    // Use emergency endpoint for urgent messages or crash data
                     val result = if (isEmergency) {
-                        
-                        // If we have crash data, include location from it
                         val location = crashData?.let { "${it.latitude},${it.longitude}" }
                         
                         httpService.sendEmergencySms(
@@ -389,8 +385,7 @@ class SmsService {
      */
     private fun getUserId(context: Context): String? {
         return try {
-            // TODO: Implement based on your authentication system
-            // For now, return null - you can integrate with Firebase Auth or your user system
+            // User ID integration with authentication system can be added here
             null
         } catch (e: Exception) {
             Log.w(TAG, "Could not get user ID", e)
@@ -489,15 +484,9 @@ class SmsService {
                     val body = c.getString(bodyIndex) ?: ""
                     val date = c.getLong(dateIndex)
                     val type = c.getInt(typeIndex) // 1 = received, 2 = sent
-                    
                     smsList.add(SmsData(address, body, date, type))
-                    
-
-                    
                     count++
                 }
-                
-
             }
             
         } catch (e: Exception) {
