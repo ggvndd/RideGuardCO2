@@ -1569,26 +1569,7 @@ fun RideGuardDetailsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Details Row - Battery Level and Pulsa Balance
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BodyText(
-                text = "Battery Level",
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                modifier = Modifier.weight(1f, false)
-            )
-            Text(
-                text = batteryResult ?: (if (isDeviceConnected) "100%" else "---"),
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
+        // Pulsa Balance Section  
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

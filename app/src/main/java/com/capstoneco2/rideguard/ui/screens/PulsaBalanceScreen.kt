@@ -82,7 +82,7 @@ fun PulsaBalanceScreen(
                 )
                 
                 BodyText(
-                    text = "This is your balance for your pulsa at your BlackBox.",
+                    text = "This is the phone number for your carrier network at your Rideguard.",
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }

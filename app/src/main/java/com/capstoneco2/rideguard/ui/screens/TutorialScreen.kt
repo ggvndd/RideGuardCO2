@@ -266,7 +266,7 @@ fun TutorialDetailDialog(
                                 fontWeight = FontWeight.Bold,
                                 lineHeight = MaterialTheme.typography.headlineSmall.lineHeight * 1.1f
                             ),
-                            color = com.capstoneco2.rideguard.ui.theme.Blue80,
+                            color = com.capstoneco2.rideguard.ui.theme.Blue40,
                             maxLines = 2
                         )
                         

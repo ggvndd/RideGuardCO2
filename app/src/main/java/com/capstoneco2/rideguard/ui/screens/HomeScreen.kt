@@ -128,6 +128,7 @@ private fun getCurrentWiFiDeviceInfo(context: Context): WiFiDeviceInfo? {
 fun HomeScreen(
     userName: String = "User",
     onNavigateToPulsaBalance: () -> Unit = {},
+    onNavigateToBlackbox: () -> Unit = {},
     showAccidentCard: Boolean = false,
     onShowAccidentDialog: () -> Unit = {},
     authViewModel: AuthViewModel = viewModel(),
@@ -238,42 +239,12 @@ fun HomeScreen(
         }
         
         item {
-            // Status Cards Row
-            Row(
+            // RideGuard Status Card (Full Width)
+            StatusCard(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatusCard(
-                    modifier = Modifier.weight(1f),
-                    title = "RideGuard Status:",
-                    value = if (isBlackboxOnline) "Connected" else "Not Connected",
-                    valueColor = if (isBlackboxOnline) Color(0xFF06A759) else Color(0xFFFF6B6B),
-                    onClick = {
-                        if (!hasLocationPermission || !hasWifiPermissions) {
-                            permissionLauncher.launch(arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                                Manifest.permission.ACCESS_WIFI_STATE,
-                                Manifest.permission.CHANGE_WIFI_STATE
-                            ))
-                        }
-                    }
-                )
-                StatusCard(
-                    modifier = Modifier.weight(1f),
-                    title = "Battery:",
-                    value = if (isBlackboxOnline) batteryLevel else "--",
-                    valueColor = if (isBlackboxOnline) Color(0xFF06A759) else Color(0xFFBBBBBB),
-                    onClick = { /* Handle battery click */ }
-                )
-            }
-        }
-        
-        item {
-            // Blackbox Connected Card with Image Background
-            BlackboxConnectedCard(
-                blackboxName = connectedDeviceName,
-                isOnline = isBlackboxOnline,
+                title = "RideGuard Device Status:",
+                value = if (isBlackboxOnline) "Connected" else "Not Connected",
+                valueColor = if (isBlackboxOnline) Color(0xFF06A759) else Color(0xFFFF6B6B),
                 onClick = {
                     if (!hasLocationPermission || !hasWifiPermissions) {
                         permissionLauncher.launch(arrayOf(
@@ -283,6 +254,17 @@ fun HomeScreen(
                             Manifest.permission.CHANGE_WIFI_STATE
                         ))
                     }
+                }
+            )
+        }
+        
+        item {
+            // Blackbox Connected Card with Image Background
+            BlackboxConnectedCard(
+                blackboxName = connectedDeviceName,
+                isOnline = isBlackboxOnline,
+                onClick = {
+                    onNavigateToBlackbox()
                 }
             )
         }
@@ -474,47 +456,29 @@ private fun PulsaBalanceSection(
     onNavigateToPulsaBalance: () -> Unit = {}
 ) {
    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+        // Full width "Add more pulsa" button
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onNavigateToPulsaBalance() },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            ),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Column {
-                Text(
-                    text = "Pulsa Balance",
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Rp5000,00",
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        
-            // Custom button with smaller font
-            Card(
+            Box(
                 modifier = Modifier
-                    .width(150.dp)
-                    .clickable { onNavigateToPulsaBalance() },
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Add More Pulsa",
-                        style = MaterialTheme.typography.bodySmall, // Made smaller
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                Text(
+                    text = "Add More Pulsa",
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
             }
         }
         

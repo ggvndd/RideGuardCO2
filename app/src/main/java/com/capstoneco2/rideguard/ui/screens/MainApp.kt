@@ -125,6 +125,7 @@ fun MainApp(
                             0 -> HomeScreen(
                                 userName = username,
                                 onNavigateToPulsaBalance = { showPulsaBalanceScreen = true },
+                                onNavigateToBlackbox = { selectedTab = 1 },
                                 showAccidentCard = showAccidentCard,
                                 onShowAccidentDialog = { showAccidentDialog = true },
                                 authViewModel = authViewModel,
