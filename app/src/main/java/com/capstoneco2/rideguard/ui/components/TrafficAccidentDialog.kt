@@ -210,7 +210,7 @@ private fun AccidentDetectedContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "Are you okay?"
-                UserRole.EMERGENCY_CONTACT -> "Contact: $crashVictimName"
+                UserRole.EMERGENCY_CONTACT -> "Device: STM32-AP"
             },
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
             color = Color.Black,
@@ -222,7 +222,7 @@ private fun AccidentDetectedContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "A traffic accident has been detected. If you're conscious and able to respond, please check your condition and call for help if needed."
-                UserRole.EMERGENCY_CONTACT -> "$crashVictimName has been involved in a traffic accident. You can view their location and call emergency services on their behalf."
+                UserRole.EMERGENCY_CONTACT -> "STM32-AP device has been involved in a traffic accident. You can view the location and call emergency services on their behalf."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Black.copy(alpha = 0.8f),
@@ -251,7 +251,7 @@ private fun AccidentDetectedContent(
                 Text(
                     text = when (userRole) {
                         UserRole.CRASH_VICTIM -> "Check Location"
-                        UserRole.EMERGENCY_CONTACT -> "View ${crashVictimName}'s Location"
+                        UserRole.EMERGENCY_CONTACT -> "View STM32-AP Location"
                     },
                     color = Color.White,
                     fontSize = 16.sp,
@@ -321,7 +321,7 @@ private fun LocationViewContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "Your Location"
-                UserRole.EMERGENCY_CONTACT -> "${crashVictimName}'s Location"
+                UserRole.EMERGENCY_CONTACT -> "STM32-AP Location"
             },
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
@@ -489,7 +489,7 @@ private fun EmergencyServicesContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "In case of emergency, please contact:"
-                UserRole.EMERGENCY_CONTACT -> "You can call emergency services on behalf of ${crashVictimName}:"
+                UserRole.EMERGENCY_CONTACT -> "You can call emergency services for STM32-AP device:"
             },
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
@@ -767,7 +767,7 @@ private fun HelpOnTheWayContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "Help is On The Way!"
-                UserRole.EMERGENCY_CONTACT -> "${crashVictimName} is in Good Hands!"
+                UserRole.EMERGENCY_CONTACT -> "STM32-AP Device is in Good Hands!"
             },
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
@@ -788,7 +788,7 @@ private fun HelpOnTheWayContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "Emergency services have been contacted and are on their way to your location."
-                UserRole.EMERGENCY_CONTACT -> "Emergency services have been contacted and are responding to ${crashVictimName}'s location."
+                UserRole.EMERGENCY_CONTACT -> "Emergency services have been contacted and are responding to the STM32-AP device location."
             },
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
@@ -800,7 +800,7 @@ private fun HelpOnTheWayContent(
         Text(
             text = when (userRole) {
                 UserRole.CRASH_VICTIM -> "Your emergency contacts have been notified. Stay safe and wait for help to arrive."
-                UserRole.EMERGENCY_CONTACT -> "You will be notified of any updates. Thank you for helping ${crashVictimName}."
+                UserRole.EMERGENCY_CONTACT -> "You will be notified of any updates. Thank you for helping with this emergency."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Black.copy(alpha = 0.8f),
