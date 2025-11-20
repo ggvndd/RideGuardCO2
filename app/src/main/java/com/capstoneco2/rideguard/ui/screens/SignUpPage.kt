@@ -65,7 +65,8 @@ import com.capstoneco2.rideguard.ui.theme.MyAppTheme
 fun SignUpPage(
     onSignUpSuccess: () -> Unit,
     onSignInClick: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    fcmToken: String? = null
 ) {
     var username by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
@@ -91,7 +92,7 @@ fun SignUpPage(
             !email.contains("@") -> errorMessage = "Please enter a valid email"
             else -> {
                 errorMessage = ""
-                authViewModel.signUp(email, password, username, phoneNumber)
+                authViewModel.signUp(email, password, username, phoneNumber, fcmToken)
             }
         }
     }

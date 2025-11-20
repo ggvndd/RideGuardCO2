@@ -13,6 +13,10 @@ import com.google.firebase.messaging.RemoteMessage
 import com.capstoneco2.rideguard.MainActivity
 import com.capstoneco2.rideguard.R
 import com.capstoneco2.rideguard.service.EmergencyNotificationManager
+import com.capstoneco2.rideguard.service.UserProfileService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
     
@@ -60,8 +64,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        // Send the new token to your server
-        sendRegistrationTokenToServer(token)
+        // Update FCM token for the current user if authenticated
+        updateFCMTokenForCurrentUser(token)
     }
 
     private fun handleEmergencyNotification(data: Map<String, String>, title: String, body: String) {
@@ -182,8 +186,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    private fun sendRegistrationTokenToServer(token: String) {
-        // FCM token registration handled by MainActivity on user authentication
+    private fun updateFCMTokenForCurrentUser(token: String) {
+        // Update FCM token for the current authenticated user
+        try {
+            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                // Update the user's FCM token in their profile
+                val userProfileService = UserProfileService()
+                CoroutineScope(Dispatchers.IO).launch {
+                    userProfileService.updateFCMToken(currentUser.uid, token)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update FCM token for current user", e)
+        }
     }
     
     /**

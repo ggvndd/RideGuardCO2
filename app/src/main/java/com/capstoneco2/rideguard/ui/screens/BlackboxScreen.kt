@@ -92,6 +92,9 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.firestore.FieldValue
 
 
 
@@ -161,6 +164,7 @@ fun BlackboxScreen(
     var hasLocationPermission by remember { mutableStateOf(false) }
     var hasWifiPermissions by remember { mutableStateOf(false) }
     var batteryResult by remember { mutableStateOf<String?>(null) }
+    var sdCardResult by remember { mutableStateOf<String?>(null) }
     
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -299,7 +303,8 @@ fun BlackboxScreen(
                 // Camera Settings
                 CameraSettingsSection(
                     deletionRate = deletionRate,
-                    onDeletionRateChange = { deletionRate = it }
+                    onDeletionRateChange = { deletionRate = it },
+                    sdCardResult = sdCardResult
                 )
             }
             
@@ -318,7 +323,11 @@ fun BlackboxScreen(
                         showDeleteConfirmDialog = true
                     },
                     isDeviceConnected = isDeviceOnline,
-                    onBatteryResult = { result -> batteryResult = result }
+                    onBatteryResult = { result -> batteryResult = result },
+                    currentUserUid = authState.user?.uid,
+                    currentUserName = authState.userProfile?.username ?: authState.user?.email?.substringBefore("@"),
+                    sdCardResult = sdCardResult,
+                    onSdCardResult = { result -> sdCardResult = result }
                 )
             }
             
@@ -1602,7 +1611,8 @@ fun RideGuardDetailsSection(
 @Composable
 fun CameraSettingsSection(
     deletionRate: String,
-    onDeletionRateChange: (String) -> Unit
+    onDeletionRateChange: (String) -> Unit,
+    sdCardResult: String? = null
 ) {
     var showDropdown by remember { mutableStateOf(false) }
     
@@ -1669,6 +1679,29 @@ fun CameraSettingsSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
+        // Parse SD card information - format: "FREE=7000MB"
+        val (displayText, usedPercentage) = if (sdCardResult != null && !sdCardResult.startsWith("Failed:") && !sdCardResult.startsWith("Invalid")) {
+            try {
+                // Parse plain text format "FREE=7000MB"
+                val freeMBStr = sdCardResult.trim()
+                    .replace("FREE=", "")
+                    .replace("MB", "")
+                    .trim()
+                val freeMB = freeMBStr.toIntOrNull() ?: 0
+                val totalMB = 8192 // 8GB = 8192MB
+                val usedMB = totalMB - freeMB
+                val usedGB = usedMB / 1024.0
+                val totalGB = totalMB / 1024.0
+                val percentage = usedMB.toFloat() / totalMB.toFloat()
+                
+                "%.1f GB of %.0f GB".format(usedGB, totalGB) to percentage
+            } catch (e: Exception) {
+                "--- GB of 8 GB" to 0f
+            }
+        } else {
+            "--- GB of 8 GB" to 0f
+        }
+        
         // SD Card Capacity
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1682,7 +1715,7 @@ fun CameraSettingsSection(
             )
             
             Text(
-                text = "2.1 GB of 32 GB",
+                text = displayText,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -1702,7 +1735,7 @@ fun CameraSettingsSection(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.065f) // 2.1/32 ≈ 0.065
+                    .fillMaxWidth(usedPercentage)
                     .height(8.dp)
                     .background(
                         MaterialTheme.colorScheme.primary,
@@ -1720,7 +1753,11 @@ fun EmergencyContactsSection(
     onAddMoreUsers: () -> Unit = {},
     onDeleteContact: (EmergencyContactInfo) -> Unit = {},
     isDeviceConnected: Boolean = false,
-    onBatteryResult: (String?) -> Unit = {}
+    onBatteryResult: (String?) -> Unit = {},
+    currentUserUid: String? = null,
+    currentUserName: String? = null,
+    sdCardResult: String? = null,
+    onSdCardResult: (String?) -> Unit = {}
 ) {
     var isVisible by remember { mutableStateOf(false) }
     var isSyncing by remember { mutableStateOf(false) }
@@ -1820,11 +1857,15 @@ fun EmergencyContactsSection(
                         isSyncing = true
                         syncResult = null
 
+                        // Use passed auth values
+                        val userUid = currentUserUid ?: "unknown"
+                        val userName = currentUserName ?: "Unknown"
+                        
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
                                 // IP dan Port ESP01
-                                val espIp = "192.168.51.1"
-                                val espPort = 8080
+                                val espIp = "192.168.4.1"
+                                val espPort = 80
 
                                 // === AMBIL SEMUA NOMOR DARI emergencyContacts ===
                                 val numberList = emergencyContacts.map { it.phoneNumber }
@@ -1839,6 +1880,31 @@ fun EmergencyContactsSection(
                                 )} 
                         } FIN
                     """.trimIndent()
+
+                                // --- Update Firestore device document before sending TCP ---
+                                try {
+                                    val firestore = Firebase.firestore
+                                    val deviceDoc = firestore.collection("rideguard_id").document("DEVICE_001")
+
+                                    val currentUserData = mapOf(
+                                        "uid" to userUid,
+                                        "username" to userName,
+                                        "lastSyncAt" to System.currentTimeMillis()
+                                    )
+
+                                    // Overwrite with current user data (only one user at a time)
+                                    val deviceData = mapOf("currentUser" to currentUserData)
+                                    deviceDoc.set(deviceData)
+                                        .addOnSuccessListener {
+                                            Log.d("BlackboxScreen", "Device document updated with current user: $userName")
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.w("BlackboxScreen", "Failed to update device document: ${e.message}")
+                                        }
+                                } catch (e: Exception) {
+                                    // Firestore update failed - log but proceed with TCP send
+                                    Log.w("BlackboxScreen", "Failed to update device document: ${e.message}")
+                                }
 
                                 // Koneksi TCP
                                 val socket = Socket(espIp, espPort)
@@ -1872,16 +1938,16 @@ fun EmergencyContactsSection(
 
 
             SecondaryButton(
-                text = if (isGettingBattery) "Getting..." else "Get Configuration",
+                text = if (isGettingBattery) "Getting..." else "Get SD Card Info",
                 onClick = {
                     if (!isGettingBattery && isDeviceConnected) {
                         isGettingBattery = true
-                        onBatteryResult(null)
+                        onSdCardResult(null)
 
                         coroutineScope.launch(Dispatchers.IO) {
                             try {
-                                val espIp = "192.168.51.1"
-                                val espPort = 8080
+                                val espIp = "192.168.4.1"
+                                val espPort = 80
 
                                 // === KONEKSI TCP ===
                                 val socket = Socket(espIp, espPort)
@@ -1893,22 +1959,20 @@ fun EmergencyContactsSection(
                                 out.println("GET FIN")
 
                                 // === TERIMA DATA ===
-                                val response = input.readLine()  // contoh: { "battery": 87 }
+                                val response = input.readLine()  // contoh: FREE=7000MB
 
                                 socket.close()
 
-                                // === PARSE JSON ===
-                                val batteryValue = try {
-                                    val json = JSONObject(response)
-                                    json.getDouble("battery")
+                                // === PARSE PLAIN TEXT RESPONSE ===
+                                val sdValue = try {
+                                    response?.trim() ?: "Invalid response"
                                 } catch (ex: Exception) {
                                     null
                                 }
 
                                 withContext(Dispatchers.Main) {
-                                    val result = batteryValue?.let { "%.1f%%".format(it) }
-                                        ?: "Invalid response: $response"
-                                    onBatteryResult(result)
+                                    val result = sdValue ?: "Invalid response: $response"
+                                    onSdCardResult(result)
 
                                     isGettingBattery = false
                                 }
@@ -1916,7 +1980,7 @@ fun EmergencyContactsSection(
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {
                                     val errorResult = "Failed: ${e.message}"
-                                    onBatteryResult(errorResult)
+                                    onSdCardResult(errorResult)
                                     isGettingBattery = false
                                 }
                             }

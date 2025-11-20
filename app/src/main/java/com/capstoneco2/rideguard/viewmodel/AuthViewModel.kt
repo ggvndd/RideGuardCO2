@@ -12,15 +12,15 @@ class AuthViewModel : ViewModel() {
     
     val authState: StateFlow<AuthState> = authRepository.authState
     
-    fun signUp(email: String, password: String, username: String, phoneNumber: String) {
+    fun signUp(email: String, password: String, username: String, phoneNumber: String, fcmToken: String? = null) {
         viewModelScope.launch {
-            authRepository.signUp(email, password, username, phoneNumber)
+            authRepository.signUp(email, password, username, phoneNumber, fcmToken)
         }
     }
     
-    fun signIn(email: String, password: String) {
+    fun signIn(email: String, password: String, fcmToken: String? = null) {
         viewModelScope.launch {
-            authRepository.signIn(email, password)
+            authRepository.signIn(email, password, fcmToken)
         }
     }
     
@@ -31,6 +31,12 @@ class AuthViewModel : ViewModel() {
     fun sendPasswordResetEmail(email: String) {
         viewModelScope.launch {
             authRepository.sendPasswordResetEmail(email)
+        }
+    }
+    
+    fun updateFCMToken(fcmToken: String) {
+        viewModelScope.launch {
+            authRepository.updateFCMToken(fcmToken)
         }
     }
     

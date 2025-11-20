@@ -25,9 +25,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.lifecycleScope
 import androidx.activity.result.contract.ActivityResultContracts
 import com.google.firebase.messaging.FirebaseMessaging
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import com.capstoneco2.rideguard.service.FCMTokenService
 import com.capstoneco2.rideguard.ui.screens.MainApp
 import com.capstoneco2.rideguard.viewmodel.AuthViewModel
 import android.content.Context
@@ -52,9 +49,9 @@ enum class AppScreen {
 
 class MainActivity : ComponentActivity() {
     
-    private val fcmTokenService = FCMTokenService(Firebase.firestore)
     private val smsService = SmsService()
     private var intentUpdateCallback: ((Intent?) -> Unit)? = null
+    internal var pendingFCMToken: String? = null
     
 
     
@@ -103,7 +100,6 @@ class MainActivity : ComponentActivity() {
                         intent = currentIntent,
                         onAuthSuccess = {
                             savePendingFCMToken()
-                            performPeriodicFCMTokenCleanup()
                         }
                     )
                 }
@@ -120,115 +116,23 @@ class MainActivity : ComponentActivity() {
     private fun retrieveFCMToken() {
         FirebaseMessaging.getInstance().token
             .addOnCompleteListener { task ->
-        if (!task.isSuccessful) {
-            return@addOnCompleteListener
-        }                // Get new FCM registration token
-                val token = task.result
-                
-                // Save token to database (when user is authenticated)
-                saveFCMTokenToDatabase(token)
-            }
-    }
-    
-    /**
-     * Save FCM token to Firestore database
-     * Note: This will only work when user is authenticated
-     */
-    private fun saveFCMTokenToDatabase(token: String?) {
-        if (token == null) {
-            return
-        }
-        
-        lifecycleScope.launch {
-            try {
-
-                val currentUserId = getCurrentUserId()
-                
-                if (currentUserId != null) {
-                    val result = fcmTokenService.saveOrUpdateFCMToken(
-                        userId = currentUserId,
-                        userDisplayName = getCurrentUserDisplayName() ?: "Unknown User",
-                        token = token,
-                        context = this@MainActivity
-                    )
-                    
-                    // FCM token save result handled internally
-                } else {
-                    storeTokenForLaterSave(token)
+                if (!task.isSuccessful) {
+                    return@addOnCompleteListener
                 }
-            } catch (e: Exception) {
-                // Exception handled silently
+                
+                // Get new FCM registration token
+                val token = task.result
+                pendingFCMToken = token
             }
-        }
     }
     
-    /**
-     * Get current authenticated user ID
-     */
-    private fun getCurrentUserId(): String? {
-        return com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-    }
-    
-    /**
-     * Get current authenticated user display name
-     */
-    private fun getCurrentUserDisplayName(): String? {
-        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-        return currentUser?.displayName ?: currentUser?.email?.substringBefore("@")
-    }
-    
-
-    
-    /**
-     * Store FCM token temporarily for saving after authentication
-     */
-    private fun storeTokenForLaterSave(token: String) {
-        val sharedPref = getSharedPreferences("fcm_prefs", Context.MODE_PRIVATE)
-        sharedPref.edit {
-            putString("pending_fcm_token", token)
-            putLong("token_timestamp", System.currentTimeMillis())
-        }
-    }
-
     /**
      * Save any pending FCM token after user authentication
      */
     private fun savePendingFCMToken() {
-        lifecycleScope.launch {
-            try {
-                val sharedPref = getSharedPreferences("fcm_prefs", Context.MODE_PRIVATE)
-                val pendingToken = sharedPref.getString("pending_fcm_token", null)
-                
-                if (pendingToken != null && getCurrentUserId() != null) {
-                    saveFCMTokenToDatabase(pendingToken)
-                    
-                    // Clear the pending token after saving
-                    sharedPref.edit {
-                        remove("pending_fcm_token")
-                        remove("token_timestamp")
-                    }
-                }
-            } catch (e: Exception) {
-                // Exception handled silently
-            }
-        }
-    }
-
-    /**
-     * Perform periodic cleanup of inactive FCM tokens
-     * Now includes safety checks to avoid index errors on empty collections
-     */
-    private fun performPeriodicFCMTokenCleanup() {
-        lifecycleScope.launch {
-            try {
-                val userId = getCurrentUserId()
-                if (userId != null) {
-                    val result = fcmTokenService.cleanupInactiveFCMTokens(this@MainActivity)
-                    // Cleanup result handled internally
-                }
-            } catch (e: Exception) {
-                // Exception handled silently
-            }
+        pendingFCMToken?.let { token ->
+            // The token will be saved through the AuthViewModel when signing up/in
+            // No need for additional logic here
         }
     }
 
@@ -278,6 +182,10 @@ fun MyApp(
 ) {
     val authViewModel: AuthViewModel = viewModel()
     val authState by authViewModel.authState.collectAsState()
+    
+    // Get the MainActivity instance to access FCM token
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activity = context as? MainActivity
     
     // Determine initial screen based on auth state
     var currentScreen by remember { 
@@ -335,7 +243,8 @@ fun MyApp(
                     onSignInClick = {
                         currentScreen = AppScreen.SIGN_IN
                     },
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    fcmToken = activity?.pendingFCMToken
                 )
             }
             
@@ -351,7 +260,8 @@ fun MyApp(
                     onForgotPasswordClick = {
                         // Forgot password functionality can be added here
                     },
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    fcmToken = activity?.pendingFCMToken
                 )
             }
             

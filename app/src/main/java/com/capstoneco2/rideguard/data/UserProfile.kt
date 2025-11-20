@@ -13,7 +13,7 @@ data class EmergencyContactRelation(
 /**
  * Data class representing a complete user profile
  * Stored in Firebase Firestore with additional information beyond Firebase Auth
- * Now includes emergency contacts as nested relations
+ * Includes FCM token for push notifications (one-to-one relationship)
  */
 data class UserProfile(
     val uid: String = "", // Firebase Auth UID
@@ -21,6 +21,7 @@ data class UserProfile(
     val email: String = "",
     val phoneNumber: String = "",
     val profileImageUrl: String? = null,
+    val fcmToken: String? = null, // FCM token for push notifications
     val emergencyContacts: List<EmergencyContactRelation> = emptyList(), // Nested emergency contacts
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
@@ -48,6 +49,7 @@ fun UserProfile.toMap(): Map<String, Any> {
         "email" to email,
         "phoneNumber" to phoneNumber,
         "profileImageUrl" to (profileImageUrl ?: ""),
+        "fcmToken" to (fcmToken ?: ""),
         "emergencyContacts" to emergencyContacts.map { it.toMap() },
         "createdAt" to createdAt,
         "updatedAt" to updatedAt

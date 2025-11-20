@@ -63,7 +63,8 @@ fun SignInPage(
     onSignInSuccess: () -> Unit,
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit = {},
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    fcmToken: String? = null
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -78,7 +79,7 @@ fun SignInPage(
             username.isEmpty() -> errorMessage = "Email is required"
             password.isEmpty() -> errorMessage = "Password is required"
             else -> {
-                authViewModel.signIn(username, password)
+                authViewModel.signIn(username, password, fcmToken)
             }
         }
     }

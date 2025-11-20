@@ -58,6 +58,7 @@ class UserProfileService {
                     email = document.getString("email") ?: "",
                     phoneNumber = document.getString("phoneNumber") ?: "",
                     profileImageUrl = document.getString("profileImageUrl"),
+                    fcmToken = document.getString("fcmToken"),
                     emergencyContacts = emergencyContacts,
                     createdAt = document.getLong("createdAt") ?: 0L,
                     updatedAt = document.getLong("updatedAt") ?: 0L
@@ -134,7 +135,7 @@ class UserProfileService {
             if (userProfile != null) {
                 // Check if contact already exists
                 val existingContact = userProfile.emergencyContacts.find { 
-                    it.contactUid == contactUid && it.isActive 
+                    it.contactUid == contactUid
                 }
                 
                 if (existingContact == null) {
@@ -169,18 +170,16 @@ class UserProfileService {
     
     /**
      * Remove emergency contact from user profile
+     * Actually deletes the contact from the list instead of setting isActive to false
      */
     suspend fun removeEmergencyContact(userUid: String, contactUid: String): Result<Unit> {
         return try {
             val userProfile = getUserProfile(userUid).getOrNull()
             
             if (userProfile != null) {
-                val updatedContacts = userProfile.emergencyContacts.map { contact ->
-                    if (contact.contactUid == contactUid) {
-                        contact.copy(isActive = false)
-                    } else {
-                        contact
-                    }
+                // Filter out the contact to be removed completely
+                val updatedContacts = userProfile.emergencyContacts.filter { contact ->
+                    contact.contactUid != contactUid
                 }
                 
                 val updatedProfile = userProfile.copy(
@@ -202,18 +201,37 @@ class UserProfileService {
     }
     
     /**
-     * Get active emergency contacts for a user
+     * Get emergency contacts for a user
      */
     suspend fun getEmergencyContacts(userUid: String): Result<List<EmergencyContactRelation>> {
         return try {
             val userProfile = getUserProfile(userUid).getOrNull()
             
             if (userProfile != null) {
-                val activeContacts = userProfile.emergencyContacts.filter { it.isActive }
-                Result.success(activeContacts)
+                // Return all emergency contacts since we now actually delete them instead of marking inactive
+                Result.success(userProfile.emergencyContacts)
             } else {
                 Result.success(emptyList())
             }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Update FCM token for a user
+     */
+    suspend fun updateFCMToken(uid: String, fcmToken: String): Result<Unit> {
+        return try {
+            usersCollection.document(uid)
+                .update(
+                    mapOf(
+                        "fcmToken" to fcmToken,
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
+                .await()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -254,6 +272,7 @@ class UserProfileService {
                             email = document.getString("email") ?: "",
                             phoneNumber = document.getString("phoneNumber") ?: "",
                             profileImageUrl = document.getString("profileImageUrl"),
+                            fcmToken = document.getString("fcmToken"),
                             emergencyContacts = emergencyContacts,
                             createdAt = document.getLong("createdAt") ?: 0L,
                             updatedAt = document.getLong("updatedAt") ?: 0L

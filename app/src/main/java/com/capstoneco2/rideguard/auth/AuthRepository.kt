@@ -33,7 +33,7 @@ class AuthRepository {
         }
     }
     
-    suspend fun signUp(email: String, password: String, username: String, phoneNumber: String) {
+    suspend fun signUp(email: String, password: String, username: String, phoneNumber: String, fcmToken: String? = null) {
         setLoadingState()
         
         when (val result = authService.signUp(email, password)) {
@@ -43,7 +43,8 @@ class AuthRepository {
                     uid = result.user?.uid ?: "",
                     username = username,
                     email = email,
-                    phoneNumber = phoneNumber
+                    phoneNumber = phoneNumber,
+                    fcmToken = fcmToken
                 )
                 
                 val profileResult = userProfileService.saveUserProfile(userProfile)
@@ -71,7 +72,7 @@ class AuthRepository {
         }
     }
     
-    suspend fun signIn(email: String, password: String) {
+    suspend fun signIn(email: String, password: String, fcmToken: String? = null) {
         setLoadingState()
         
         when (val result = authService.signIn(email, password)) {
@@ -79,6 +80,10 @@ class AuthRepository {
                 // Load user profile from Firestore
                 result.user?.uid?.let { uid ->
                     loadUserProfile(uid)
+                    // Update FCM token if provided
+                    if (fcmToken != null) {
+                        userProfileService.updateFCMToken(uid, fcmToken)
+                    }
                 } ?: run {
                     _authState.value = _authState.value.copy(
                         isLoading = false,
@@ -141,6 +146,24 @@ class AuthRepository {
                     isLoading = false,
                     error = result.message
                 )
+            }
+        }
+    }
+    
+    suspend fun updateFCMToken(fcmToken: String) {
+        val currentUser = authService.currentUser
+        if (currentUser != null) {
+            val result = userProfileService.updateFCMToken(currentUser.uid, fcmToken)
+            if (result.isSuccess) {
+                // Update the local auth state with new FCM token
+                _authState.value.userProfile?.let { currentProfile ->
+                    _authState.value = _authState.value.copy(
+                        userProfile = currentProfile.copy(
+                            fcmToken = fcmToken,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+                }
             }
         }
     }
